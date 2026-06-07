@@ -141,7 +141,7 @@ const TG = {
         let id = this.getChatId();
         if (id) return id;
 
-        // Try Telegram Web App user
+        // Try Telegram Web App user first (auto, no prompt needed)
         if (this.isTelegramWebApp()) {
             const user = this.getTelegramUser();
             if (user?.id) {
@@ -150,18 +150,33 @@ const TG = {
             }
         }
 
-        id = prompt(
-            `📲 Enter your Telegram Chat ID to enable notifications.\n\n` +
-            `To get it:\n1. Open Telegram\n2. Send /start to ${this.BOT_NAME}\n3. Visit:\nhttps://api.telegram.org/bot${this.TOKEN}/getUpdates\n4. Look for "chat":{"id": YOUR_ID}`
-        );
+        // SweetAlert2 input dialog
+        id = await UI.prompt({
+            title: '📲 Connect Telegram',
+            html: `Enter your <strong>Chat ID</strong> to enable expense notifications.<br><br>
+                         <div style="background:#f4f7ff;border-radius:10px;padding:10px 12px;font-size:.8rem;color:#374151;text-align:left;line-height:1.7">
+                           1. Open Telegram → send <code style="background:#e5e7eb;padding:1px 5px;border-radius:4px">/start</code> to <strong>@infomanage_bot</strong><br>
+                           2. <a href="https://api.telegram.org/bot${this.TOKEN}/getUpdates" target="_blank" style="color:#667eea;font-weight:600">Click here to get your ID ↗</a><br>
+                           3. Look for <code style="background:#e5e7eb;padding:1px 5px;border-radius:4px">"chat":{"id": <em>YOUR_ID</em>}</code>
+                         </div>`,
+            placeholder: 'e.g. 1386198449',
+            inputType: 'text',
+            confirmText: 'Connect 🔗',
+            cancelText: 'Later',
+            validator: v => (v && v.trim()) ? null : 'Please enter your Chat ID'
+        });
+
         if (id) {
-            this.setChatId(id.trim());
-            // Send a welcome message
-            await this.send(id.trim(),
-                `✅ *Budget notifications enabled\\!*\n\nHi ${localStorage.getItem('budget_app_v2') ? JSON.parse(localStorage.getItem('budget_app_v2')).settings?.name || 'Davy' : 'Davy'} 👋\nYou'll receive alerts every time you log an expense.`,
-                { parse_mode: 'Markdown' }
+            id = id.trim();
+            this.setChatId(id);
+            const name = (() => {
+                try { return JSON.parse(localStorage.getItem('budget_app_v2'))?.settings?.name || 'Davy'; }
+                catch { return 'Davy'; }
+            })();
+            await this.send(id,
+                `✅ *Budget notifications enabled\\!*\n\nHi ${name} 👋\nYou'll receive a Telegram alert every time you log an expense.`
             );
-            return id.trim();
+            return id;
         }
         return null;
     },

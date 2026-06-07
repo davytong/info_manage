@@ -170,7 +170,12 @@ const App = {
         const date = document.getElementById('expenseDate').value;
 
         if (!catKey || isNaN(rawAmt) || rawAmt <= 0) {
-            UI.toast('Please fill in valid fields', 'error'); return;
+            UI.alert({
+                title: 'Invalid input',
+                html: 'Please select a category and enter a valid amount.',
+                icon: 'error'
+            });
+            return;
         }
 
         const amount = currency === 'KHR'
@@ -192,10 +197,20 @@ const App = {
     },
 
     deleteTransaction(id) {
-        if (!confirm('Delete this transaction?')) return;
-        Budget.deleteTransaction(this.data, id);
-        UI.toast('Transaction deleted', 'warning');
-        this.render();
+        const tx = this.data.transactions.find(t => t.id === id);
+        const cat = tx ? (this.data.budgets[tx.category] || { icon: '💸', label: tx.category }) : { icon: '💸', label: '' };
+        UI.confirm({
+            title: 'Delete transaction?',
+            html: `<span style="font-size:1.5rem">${cat.icon}</span><br><strong>${cat.label}</strong> — $${tx ? tx.amount.toFixed(2) : ''}`,
+            icon: 'warning',
+            confirmText: 'Yes, delete',
+            cancelText: 'Cancel'
+        }).then(confirmed => {
+            if (!confirmed) return;
+            Budget.deleteTransaction(this.data, id);
+            UI.toast('Transaction deleted', 'warning');
+            this.render();
+        });
     },
 
     /* ─────────────── TELEGRAM NOTIFICATIONS ─────────────── */
@@ -292,12 +307,11 @@ const App = {
 
         // Validate: p1 and p2 must be different, 1–28
         if (p1 === p2 || p1 < 1 || p1 > 28 || p2 < 1 || p2 > 28) {
-            UI.toast('Payday days must be different and between 1–28', 'error');
+            UI.alert({ title: 'Invalid days', html: 'Payday days must be between 1–28 and different.', icon: 'error' });
             return;
         }
-        // p1 must be < p2 so Cycle A stays within one month
         if (p1 >= p2) {
-            UI.toast('Payday 1 day must be before Payday 2 day', 'error');
+            UI.alert({ title: 'Invalid order', html: 'Payday 1 day must be <strong>before</strong> Payday 2 day.', icon: 'error' });
             return;
         }
 

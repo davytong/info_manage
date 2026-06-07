@@ -1,76 +1,150 @@
 // ui.js — UI rendering helpers
 
 const UI = {
-    /* ── Toasts ── */
-    toast(msg, type = 'success') {
-        const colors = { success: '#00c853', error: '#ff5252', info: '#00bcd4', warning: '#ff9800' };
-        const t = document.createElement('div');
-        t.className = 'app-toast';
-        t.style.cssText = `background:${colors[type] || colors.success};`;
-        t.innerHTML = `<span>${msg}</span>`;
-        document.body.appendChild(t);
-        setTimeout(() => t.classList.add('show'), 10);
-        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2800);
-    },
 
-    /* ── Number counter animation ── */
-    animateNumber(el, target, prefix = '$', decimals = 2) {
-        const start = parseFloat(el.dataset.current || 0);
-        const duration = 600;
-        const step = 16;
-        const steps = duration / step;
-        const inc = (target - start) / steps;
-        let current = start;
-        let count = 0;
-        const tick = () => {
-            count++;
-            current += inc;
-            if (count >= steps) { current = target; }
-            el.textContent = prefix + current.toFixed(decimals);
-            el.dataset.current = current;
-            if (count < steps) setTimeout(tick, step);
-        };
-        tick();
-    },
+  /* ══════════════════════════════════════
+     SWEETALERT2 WRAPPERS
+  ══════════════════════════════════════ */
 
-    /* ── Progress bar ── */
-    renderProgressBar(pct, status) {
-        const colorMap = { success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)' };
-        const color = colorMap[status] || colorMap.success;
-        return `<div class="progress-track">
+  /* ── Toast (top-right, auto-dismiss) ── */
+  toast(msg, type = 'success') {
+    const iconMap = { success: 'success', error: 'error', info: 'info', warning: 'warning' };
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: iconMap[type] || 'success',
+      title: msg,
+      showConfirmButton: false,
+      timer: 2800,
+      timerProgressBar: true,
+      customClass: { popup: 'swal-toast-popup' },
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
+  },
+
+  /* ── Confirm dialog — returns Promise<boolean> ── */
+  confirm(opts = {}) {
+    return Swal.fire({
+      title: opts.title || 'Are you sure?',
+      html: opts.html || opts.text || '',
+      icon: opts.icon || 'question',
+      showCancelButton: true,
+      confirmButtonText: opts.confirmText || 'Yes',
+      cancelButtonText: opts.cancelText || 'Cancel',
+      confirmButtonColor: opts.icon === 'warning' ? '#ff5252' : '#667eea',
+      cancelButtonColor: '#9ca3af',
+      customClass: {
+        popup: 'swal-popup',
+        confirmButton: 'swal-confirm-btn',
+        cancelButton: 'swal-cancel-btn'
+      },
+      buttonsStyling: false,
+      reverseButtons: true
+    }).then(r => r.isConfirmed);
+  },
+
+  /* ── Alert ── */
+  alert(opts = {}) {
+    return Swal.fire({
+      title: opts.title || '',
+      html: opts.html || opts.text || '',
+      icon: opts.icon || 'info',
+      confirmButtonText: opts.confirmText || 'OK',
+      confirmButtonColor: '#667eea',
+      customClass: { popup: 'swal-popup', confirmButton: 'swal-confirm-btn' },
+      buttonsStyling: false
+    });
+  },
+
+  /* ── Input prompt — returns Promise<string|null> ── */
+  prompt(opts = {}) {
+    return Swal.fire({
+      title: opts.title || 'Enter value',
+      html: opts.html || '',
+      input: opts.inputType || 'text',
+      inputPlaceholder: opts.placeholder || '',
+      inputValue: opts.value || '',
+      showCancelButton: true,
+      confirmButtonText: opts.confirmText || 'OK',
+      cancelButtonText: opts.cancelText || 'Cancel',
+      confirmButtonColor: '#667eea',
+      cancelButtonColor: '#9ca3af',
+      customClass: {
+        popup: 'swal-popup',
+        input: 'swal-input',
+        confirmButton: 'swal-confirm-btn',
+        cancelButton: 'swal-cancel-btn'
+      },
+      buttonsStyling: false,
+      inputValidator: opts.validator || null
+    }).then(r => r.isConfirmed ? r.value : null);
+  },
+
+  /* ══════════════════════════════════════
+     ANIMATION HELPERS
+  ══════════════════════════════════════ */
+
+  animateNumber(el, target, prefix = '$', decimals = 2) {
+    const start = parseFloat(el.dataset.current || 0);
+    const steps = 600 / 16;
+    const inc = (target - start) / steps;
+    let current = start;
+    let count = 0;
+    const tick = () => {
+      count++;
+      current += inc;
+      if (count >= steps) current = target;
+      el.textContent = prefix + current.toFixed(decimals);
+      el.dataset.current = current;
+      if (count < steps) setTimeout(tick, 16);
+    };
+    tick();
+  },
+
+  animateProgressBars() {
+    document.querySelectorAll('.progress-fill[data-target]').forEach(el => {
+      const target = parseFloat(el.dataset.target);
+      setTimeout(() => { el.style.width = target + '%'; }, 50);
+    });
+  },
+
+  /* ══════════════════════════════════════
+     FORMAT HELPERS
+  ══════════════════════════════════════ */
+
+  formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
+  },
+
+  formatUSD(amount) {
+    return '$' + Math.abs(amount).toFixed(2);
+  },
+
+  /* ══════════════════════════════════════
+     RENDER HELPERS
+  ══════════════════════════════════════ */
+
+  renderProgressBar(pct, status) {
+    const colorMap = { success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)' };
+    const color = colorMap[status] || colorMap.success;
+    return `<div class="progress-track">
       <div class="progress-fill" style="width:0%;background:${color}" data-target="${pct.toFixed(1)}"></div>
     </div>`;
-    },
+  },
 
-    /* ── Animate progress bars (call after DOM insert) ── */
-    animateProgressBars() {
-        document.querySelectorAll('.progress-fill[data-target]').forEach(el => {
-            const target = parseFloat(el.dataset.target);
-            setTimeout(() => { el.style.width = target + '%'; }, 50);
-        });
-    },
+  renderHero(settings, cycleInfo, cycleSpent) {
+    const remaining = cycleInfo.income - cycleSpent;
+    const safeDaily = cycleInfo.daysUntilPayday > 0 ? Math.max(0, remaining / cycleInfo.daysUntilPayday) : 0;
+    const cycleLabel = Cycle.formatCycleLabel(cycleInfo.cycleStart, cycleInfo.cycleEnd);
+    const greetingHour = new Date().getHours();
+    const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
+    const safeDailyColor = safeDaily < 5 ? '#ff5252' : safeDaily < 10 ? '#ff9800' : '#00c853';
 
-    /* ── Format date ── */
-    formatDate(dateStr) {
-        const d = new Date(dateStr + 'T00:00:00');
-        return d.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
-    },
-
-    /* ── Format currency ── */
-    formatUSD(amount) {
-        return '$' + Math.abs(amount).toFixed(2);
-    },
-
-    /* ── Hero section ── */
-    renderHero(settings, cycleInfo, cycleSpent) {
-        const remaining = cycleInfo.income - cycleSpent;
-        const safeDaily = cycleInfo.daysUntilPayday > 0 ? Math.max(0, remaining / cycleInfo.daysUntilPayday) : 0;
-        const cycleLabel = Cycle.formatCycleLabel(cycleInfo.cycleStart, cycleInfo.cycleEnd);
-        const greetingHour = new Date().getHours();
-        const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
-        const safeDailyColor = safeDaily < 5 ? '#ff5252' : safeDaily < 10 ? '#ff9800' : '#00c853';
-
-        return `<div class="hero-card glass-card">
+    return `<div class="hero-card glass-card">
       <div class="hero-greeting">${greeting}, ${settings.name} 👋</div>
       <div class="hero-cycle"><i class="fa-solid fa-calendar-days me-1"></i>${cycleLabel}</div>
       <div class="hero-safe-label">Safe to Spend Today</div>
@@ -103,12 +177,11 @@ const UI = {
         </div>
       </div>
     </div>`;
-    },
+  },
 
-    /* ── Category card ── */
-    renderCategoryCard(key, stats) {
-        const s = stats[key];
-        return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
+  renderCategoryCard(key, stats) {
+    const s = stats[key];
+    return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
       <div class="cat-card" data-cat="${key}" onclick="App.openQuickAdd('${key}')">
         <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${s.icon}</div>
         <div class="cat-name">${s.label}</div>
@@ -123,12 +196,11 @@ const UI = {
         <div class="cat-pct-label" style="color:${s.color}">${s.pct.toFixed(0)}%</div>
       </div>
     </div>`;
-    },
+  },
 
-    /* ── Transaction row ── */
-    renderTransaction(tx, budgets) {
-        const cat = budgets[tx.category] || { icon: '💸', label: tx.category, color: '#667eea' };
-        return `<div class="tx-row fade-in-card" data-id="${tx.id}">
+  renderTransaction(tx, budgets) {
+    const cat = budgets[tx.category] || { icon: '💸', label: tx.category, color: '#667eea' };
+    return `<div class="tx-row fade-in-card" data-id="${tx.id}">
       <div class="tx-icon" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
       <div class="tx-info">
         <div class="tx-cat">${cat.label}</div>
@@ -143,13 +215,12 @@ const UI = {
         </div>
       </div>
     </div>`;
-    },
+  },
 
-    /* ── Quick action button ── */
-    renderQuickBtn(catKey, cat, amount) {
-        return `<button class="quick-btn" style="--qc:${cat.color}" onclick="App.quickAdd('${catKey}', ${amount})">
+  renderQuickBtn(catKey, cat, amount) {
+    return `<button class="quick-btn" style="--qc:${cat.color}" onclick="App.quickAdd('${catKey}', ${amount})">
       <span class="quick-icon">${cat.icon}</span>
       <span class="quick-label">+$${amount}</span>
     </button>`;
-    }
+  }
 };

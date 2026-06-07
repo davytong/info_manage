@@ -566,28 +566,9 @@ body {
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
 }
 
-/* ── Toast ── */
+/* ── Toast — replaced by SweetAlert2 ── */
 .app-toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--success);
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: 50px;
-  font-weight: 600;
-  font-size: 0.88rem;
-  z-index: 9999;
-  opacity: 0;
-  transition: opacity 0.3s, transform 0.3s;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-  white-space: nowrap;
-}
-
-.app-toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  display: none;
 }
 
 /* ── Empty State ── */
@@ -868,4 +849,140 @@ body {
   font-size: 0.7rem;
   color: var(--muted);
   margin-top: 3px;
+}
+
+/* ══════════════════════════════════════════
+   SWEETALERT2 CUSTOM THEME
+══════════════════════════════════════════ */
+
+/* ── Shared popup base ── */
+.swal-popup {
+  font-family: 'Poppins', sans-serif !important;
+  border-radius: 20px !important;
+  padding: 28px 24px !important;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.22) !important;
+}
+
+/* ── Toast popup (top-right) ── */
+.swal-toast-popup {
+  font-family: 'Poppins', sans-serif !important;
+  border-radius: 14px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  padding: 12px 18px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15) !important;
+  min-width: 220px !important;
+}
+
+/* ── Title ── */
+.swal2-title {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+}
+
+/* ── HTML content ── */
+.swal2-html-container {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: 0.88rem !important;
+  color: #4b5563 !important;
+}
+
+/* ── Input field ── */
+.swal-input,
+.swal2-input {
+  font-family: 'Poppins', sans-serif !important;
+  border-radius: 12px !important;
+  border: 1.5px solid #e5e7eb !important;
+  font-size: 0.9rem !important;
+  padding: 10px 14px !important;
+  box-shadow: none !important;
+  transition: border-color 0.2s !important;
+}
+
+.swal2-input:focus,
+.swal-input:focus {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15) !important;
+  outline: none !important;
+}
+
+/* ── Confirm button ── */
+.swal-confirm-btn {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  border-radius: 50px !important;
+  padding: 10px 28px !important;
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: #fff !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.35) !important;
+}
+
+.swal-confirm-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.45) !important;
+}
+
+/* Danger confirm (delete) */
+.swal2-confirm.swal-confirm-btn[style*='ff5252'],
+.swal2-actions .swal-confirm-btn {
+  background: linear-gradient(135deg, #ff5252, #d32f2f) !important;
+}
+
+/* ── Cancel button ── */
+.swal-cancel-btn {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  border-radius: 50px !important;
+  padding: 10px 24px !important;
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+
+.swal-cancel-btn:hover {
+  background: #e5e7eb !important;
+}
+
+/* ── Icon sizing ── */
+.swal2-icon {
+  margin: 0 auto 16px !important;
+  width: 64px !important;
+  height: 64px !important;
+}
+
+.swal2-icon .swal2-icon-content {
+  font-size: 2rem !important;
+}
+
+/* ── Actions row ── */
+.swal2-actions {
+  gap: 10px !important;
+  margin-top: 20px !important;
+}
+
+/* ── Timer progress bar ── */
+.swal2-timer-progress-bar {
+  background: rgba(102, 126, 234, 0.5) !important;
+}
+
+/* ── Backdrop ── */
+.swal2-backdrop-show {
+  background: rgba(31, 41, 55, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ── Validation message ── */
+.swal2-validation-message {
+  font-family: 'Poppins', sans-serif !important;
+  border-radius: 8px !important;
+  font-size: 0.8rem !important;
 }
