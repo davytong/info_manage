@@ -35,6 +35,8 @@ const App = {
         this.renderTransactions();
         setTimeout(() => UI.animateProgressBars(), 100);
         this.renderCharts(catStats);
+        // keep expense modal category list in sync
+        UI.rebuildCatSelect(budgets);
     },
 
     renderQuickButtons() {
@@ -282,6 +284,129 @@ const App = {
         const result = await TG.notifyFullReport(this.data);
         if (result && result.ok) UI.toast('📤 Report sent to Telegram');
         else UI.toast('Telegram error — check Chat ID', 'error');
+    },
+
+    /* ─────────────── EDIT CATEGORY ─────────────── */
+
+    // Predefined emoji list for the picker
+    _catEmojis: [
+        '🍔', '🍕', '🍜', '🍱', '🥗', '🍳', '🛒', '🥤',
+        '⛽', '🚗', '🏍️', '🚌', '✈️', '🚢', '🚲', '🛴',
+        '🏠', '🏡', '💡', '🔧', '🛁', '🪴', '🔑', '📦',
+        '👨‍👩‍👧', '👶', '🎓', '🏫', '❤️', '🎁', '🧸', '🎒',
+        '🛡️', '🏥', '💊', '🩺', '🔒', '🧯', '🚑', '⚕️',
+        '👤', '💆', '💄', '👗', '🎽', '🏋️', '🧴', '💅',
+        '🅿️', '🚧', '🪙', '💰', '📱', '💻', '🎮', '📷',
+        '🌿', '☕', '🍷', '🎵', '🎬', '📚', '🏖️', '🎯'
+    ],
+
+    openEditCategory(key) {
+        const cat = this.data.budgets[key];
+        if (!cat) return;
+
+        // Build emoji grid HTML
+        const emojiGrid = this._catEmojis.map(e =>
+            `<button type="button" class="emoji-btn${cat.icon === e ? ' active' : ''}"
+                     onclick="App._pickEmoji(this,'${e}')">${e}</button>`
+        ).join('');
+
+        // Build color swatch grid HTML
+        const colors = [
+            '#ff6b35', '#ff9800', '#ffc107', '#00c853',
+            '#4caf50', '#2196f3', '#00bcd4', '#9c27b0',
+            '#e91e63', '#f44336', '#3f51b5', '#009688',
+            '#795548', '#607d8b', '#667eea', '#764ba2'
+        ];
+        const colorGrid = colors.map(c =>
+            `<button type="button" class="color-swatch${cat.color === c ? ' active' : ''}"
+                     style="background:${c}"
+                     onclick="App._pickColor(this,'${c}')"></button>`
+        ).join('');
+
+        Swal.fire({
+            title: `<span style="font-size:1.5rem">${cat.icon}</span> Edit Category`,
+            html: `
+              <div class="cat-edit-form">
+                <div class="cef-group">
+                  <label class="cef-label">Category Name</label>
+                  <input id="cef-label" class="cef-input" type="text" value="${cat.label}" maxlength="24" placeholder="Name" />
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Monthly Budget (USD)</label>
+                  <input id="cef-budget" class="cef-input" type="number" value="${cat.budget}" min="0" step="1" placeholder="0" />
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Icon</label>
+                  <div id="cef-icon-display" class="cef-icon-display" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
+                  <div class="emoji-grid">${emojiGrid}</div>
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Color</label>
+                  <div class="color-grid">${colorGrid}</div>
+                </div>
+              </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Save Category',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                popup: 'swal-popup swal-cat-edit-popup',
+                confirmButton: 'swal-confirm-btn',
+                cancelButton: 'swal-cancel-btn',
+                htmlContainer: 'swal-cat-edit-html'
+            },
+            buttonsStyling: false,
+            reverseButtons: true,
+            didOpen: () => {
+                // store working values on the Swal popup element
+                const popup = Swal.getPopup();
+                popup._editKey = key;
+                popup._editIcon = cat.icon;
+                popup._editColor = cat.color;
+            },
+            preConfirm: () => {
+                const popup = Swal.getPopup();
+                const label = document.getElementById('cef-label').value.trim();
+                const budget = parseFloat(document.getElementById('cef-budget').value);
+                if (!label) { Swal.showValidationMessage('Name cannot be empty'); return false; }
+                if (isNaN(budget) || budget < 0) { Swal.showValidationMessage('Enter a valid budget amount'); return false; }
+                return { label, budget, icon: popup._editIcon, color: popup._editColor };
+            }
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const { label, budget, icon, color } = result.value;
+            this.data.budgets[key] = { ...this.data.budgets[key], label, budget, icon, color };
+            Storage.save(this.data);
+            UI.toast(`${icon} ${label} updated`, 'success');
+            this.render();
+        });
+    },
+
+    // Called by emoji buttons inside the Swal popup
+    _pickEmoji(btn, emoji) {
+        const popup = Swal.getPopup();
+        popup._editIcon = emoji;
+        popup.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // update icon display
+        const disp = document.getElementById('cef-icon-display');
+        if (disp) disp.textContent = emoji;
+        // update Swal title icon
+        const title = Swal.getTitle();
+        if (title) title.querySelector('span').textContent = emoji;
+    },
+
+    // Called by color swatches inside the Swal popup
+    _pickColor(btn, color) {
+        const popup = Swal.getPopup();
+        popup._editColor = color;
+        popup.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        // update icon display background
+        const disp = document.getElementById('cef-icon-display');
+        if (disp) {
+            disp.style.background = color + '22';
+            disp.style.color = color;
+        }
     },
 
     /* ─────────────── SETTINGS ─────────────── */

@@ -182,8 +182,13 @@ const UI = {
   renderCategoryCard(key, stats) {
     const s = stats[key];
     return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
-      <div class="cat-card" data-cat="${key}" onclick="App.openQuickAdd('${key}')">
-        <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${s.icon}</div>
+      <div class="cat-card" data-cat="${key}">
+        <div class="cat-card-top">
+          <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${s.icon}</div>
+          <button class="cat-edit-btn" onclick="event.stopPropagation();App.openEditCategory('${key}')" title="Edit category">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+        </div>
         <div class="cat-name">${s.label}</div>
         <div class="cat-budget">Budget: $${s.budget}</div>
         ${this.renderProgressBar(s.pct, s.status)}
@@ -194,6 +199,9 @@ const UI = {
           </span>
         </div>
         <div class="cat-pct-label" style="color:${s.color}">${s.pct.toFixed(0)}%</div>
+        <button class="cat-add-btn" onclick="App.openQuickAdd('${key}')">
+          <i class="fa-solid fa-plus"></i> Add
+        </button>
       </div>
     </div>`;
   },
@@ -222,5 +230,17 @@ const UI = {
       <span class="quick-icon">${cat.icon}</span>
       <span class="quick-label">+$${amount}</span>
     </button>`;
+  },
+
+  /* ── Rebuild category <select> from live data ── */
+  rebuildCatSelect(budgets) {
+    const sel = document.getElementById('modalCatSelect');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Select Category —</option>' +
+      Object.entries(budgets).map(([k, b]) =>
+        `<option value="${k}">${b.icon} ${b.label}</option>`
+      ).join('');
+    if (current && budgets[current]) sel.value = current;
   }
 };

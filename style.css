@@ -986,3 +986,200 @@ body {
   border-radius: 8px !important;
   font-size: 0.8rem !important;
 }
+
+/* ══════════════════════════════════════════
+   CATEGORY CARD — EDIT LAYOUT
+══════════════════════════════════════════ */
+
+/* Card top row: icon left, edit button right */
+.cat-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+/* Edit pencil button */
+.cat-edit-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.18s, color 0.18s, transform 0.15s;
+  opacity: 0;
+  /* hidden by default, shown on hover */
+}
+
+.cat-card:hover .cat-edit-btn {
+  opacity: 1;
+}
+
+/* Always visible on touch devices */
+@media (hover: none) {
+  .cat-edit-btn {
+    opacity: 1;
+  }
+}
+
+.cat-edit-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* "Add" button at the bottom of each card */
+.cat-add-btn {
+  margin-top: 8px;
+  width: 100%;
+  border: 1.5px dashed var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+
+.cat-add-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ══════════════════════════════════════════
+   EDIT CATEGORY SWEETALERT FORM
+══════════════════════════════════════════ */
+
+.swal-cat-edit-popup {
+  max-width: 420px !important;
+  width: 96vw !important;
+}
+
+.swal-cat-edit-html {
+  text-align: left !important;
+  padding: 0 4px !important;
+}
+
+.cat-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.cef-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.cef-input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.cef-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+/* Icon display preview */
+.cef-icon-display {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Emoji grid */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 4px 2px;
+  scrollbar-width: thin;
+}
+
+.emoji-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  padding: 0;
+}
+
+.emoji-btn:hover {
+  background: #ede9fe;
+  transform: scale(1.15);
+}
+
+.emoji-btn.active {
+  border-color: var(--primary);
+  background: #ede9fe;
+  transform: scale(1.1);
+}
+
+/* Color swatch grid */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  padding: 0;
+}
+
+.color-swatch:hover {
+  transform: scale(1.18);
+  filter: brightness(1.1);
+}
+
+.color-swatch.active {
+  border-color: #fff;
+  outline: 2px solid var(--text);
+  transform: scale(1.15);
+}
