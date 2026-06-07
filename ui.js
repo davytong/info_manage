@@ -27,6 +27,7 @@ const UI = {
 
   /* ── Confirm dialog — returns Promise<boolean> ── */
   confirm(opts = {}) {
+    const isDanger = opts.icon === 'warning' || opts.danger;
     return Swal.fire({
       title: opts.title || 'Are you sure?',
       html: opts.html || opts.text || '',
@@ -34,11 +35,9 @@ const UI = {
       showCancelButton: true,
       confirmButtonText: opts.confirmText || 'Yes',
       cancelButtonText: opts.cancelText || 'Cancel',
-      confirmButtonColor: opts.icon === 'warning' ? '#ff5252' : '#667eea',
-      cancelButtonColor: '#9ca3af',
       customClass: {
         popup: 'swal-popup',
-        confirmButton: 'swal-confirm-btn',
+        confirmButton: isDanger ? 'swal-confirm-btn swal-confirm-danger' : 'swal-confirm-btn',
         cancelButton: 'swal-cancel-btn'
       },
       buttonsStyling: false,
@@ -53,7 +52,6 @@ const UI = {
       html: opts.html || opts.text || '',
       icon: opts.icon || 'info',
       confirmButtonText: opts.confirmText || 'OK',
-      confirmButtonColor: '#667eea',
       customClass: { popup: 'swal-popup', confirmButton: 'swal-confirm-btn' },
       buttonsStyling: false
     });
@@ -70,8 +68,6 @@ const UI = {
       showCancelButton: true,
       confirmButtonText: opts.confirmText || 'OK',
       cancelButtonText: opts.cancelText || 'Cancel',
-      confirmButtonColor: '#667eea',
-      cancelButtonColor: '#9ca3af',
       customClass: {
         popup: 'swal-popup',
         input: 'swal-input',

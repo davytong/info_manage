@@ -40,7 +40,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* DO NOT set overflow:hidden on body — it breaks SweetAlert2 fixed positioning */
 }
 
 /* ── Top Bar ── */
@@ -52,8 +52,11 @@ body {
   justify-content: space-between;
   position: sticky;
   top: 0;
-  z-index: 100;
+  /* z-index must be LOWER than SweetAlert2 (Swal uses 1060+) */
+  z-index: 50;
   box-shadow: 0 2px 20px rgba(102, 126, 234, 0.3);
+  /* isolate avoids creating a stacking context that traps swal */
+  isolation: isolate;
 }
 
 .top-bar-title {
@@ -482,7 +485,8 @@ body {
   cursor: pointer;
   box-shadow: 0 6px 28px rgba(102, 126, 234, 0.45);
   transition: transform 0.2s, box-shadow 0.2s;
-  z-index: 200;
+  /* Keep below SweetAlert2 (1060+) but above page content */
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -853,31 +857,89 @@ body {
 
 /* ══════════════════════════════════════════
    SWEETALERT2 CUSTOM THEME
+   Single source of truth — shared base,
+   toast only overrides sizing.
 ══════════════════════════════════════════ */
+
+/* ── Force SweetAlert2 above everything ── */
+.swal2-container {
+  z-index: 9999 !important;
+}
+
+/* ── Backdrop — ONLY on centered modals, never on toasts ── */
+.swal2-container.swal2-center {
+  background: rgba(31, 41, 55, 0.55) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ── Toast container must be fully transparent — no backdrop ── */
+.swal2-container.swal2-top-end,
+.swal2-container.swal2-top-right,
+.swal2-container.swal2-top,
+.swal2-container.swal2-top-start,
+.swal2-container.swal2-bottom-end,
+.swal2-container.swal2-bottom {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+/* Allow clicking the toast itself */
+.swal2-container.swal2-top-end .swal2-popup,
+.swal2-container.swal2-top-right .swal2-popup {
+  pointer-events: auto !important;
+}
+
+.swal2-popup {
+  margin: auto !important;
+}
 
 /* ── Shared popup base ── */
 .swal-popup {
   font-family: 'Poppins', sans-serif !important;
   border-radius: 20px !important;
   padding: 28px 24px !important;
-  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.22) !important;
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.25) !important;
+  position: relative !important;
 }
 
-/* ── Toast popup (top-right) ── */
-.swal-toast-popup {
-  font-family: 'Poppins', sans-serif !important;
+/* ── Toast — inherits .swal-popup, overrides size only ── */
+.swal-toast-popup.swal-popup {
   border-radius: 14px !important;
-  font-size: 0.88rem !important;
+  padding: 10px 16px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14) !important;
+  min-width: 200px !important;
+  max-width: 340px !important;
+  font-size: 0.86rem !important;
   font-weight: 600 !important;
-  padding: 12px 18px !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15) !important;
-  min-width: 220px !important;
 }
 
-/* ── Title ── */
+/* Toast title — compact */
+.swal-toast-popup .swal2-title {
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+
+/* Toast icon — small inline */
+.swal-toast-popup .swal2-icon {
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0 8px 0 0 !important;
+}
+
+.swal-toast-popup .swal2-icon .swal2-icon-content {
+  font-size: 0.85rem !important;
+}
+
+/* ── Title — modals ── */
 .swal2-title {
   font-family: 'Poppins', sans-serif !important;
-  font-size: 1.1rem !important;
+  font-size: 1.05rem !important;
   font-weight: 700 !important;
   color: #1f2937 !important;
 }
@@ -898,6 +960,7 @@ body {
   font-size: 0.9rem !important;
   padding: 10px 14px !important;
   box-shadow: none !important;
+  width: 100% !important;
   transition: border-color 0.2s !important;
 }
 
@@ -908,7 +971,7 @@ body {
   outline: none !important;
 }
 
-/* ── Confirm button ── */
+/* ── Confirm button — default (primary gradient) ── */
 .swal-confirm-btn {
   font-family: 'Poppins', sans-serif !important;
   font-weight: 700 !important;
@@ -928,10 +991,14 @@ body {
   box-shadow: 0 8px 20px rgba(102, 126, 234, 0.45) !important;
 }
 
-/* Danger confirm (delete) */
-.swal2-confirm.swal-confirm-btn[style*='ff5252'],
-.swal2-actions .swal-confirm-btn {
+/* Danger variant — applied via a separate class on Swal.fire() */
+.swal-confirm-danger {
   background: linear-gradient(135deg, #ff5252, #d32f2f) !important;
+  box-shadow: 0 4px 14px rgba(255, 82, 82, 0.35) !important;
+}
+
+.swal-confirm-danger:hover {
+  box-shadow: 0 8px 20px rgba(255, 82, 82, 0.45) !important;
 }
 
 /* ── Cancel button ── */
@@ -952,32 +1019,28 @@ body {
   background: #e5e7eb !important;
 }
 
-/* ── Icon sizing ── */
+/* ── Icon sizing — modals only ── */
 .swal2-icon {
-  margin: 0 auto 16px !important;
-  width: 64px !important;
-  height: 64px !important;
+  margin: 0 auto 14px !important;
+  width: 60px !important;
+  height: 60px !important;
 }
 
 .swal2-icon .swal2-icon-content {
-  font-size: 2rem !important;
+  font-size: 1.8rem !important;
 }
 
 /* ── Actions row ── */
 .swal2-actions {
   gap: 10px !important;
   margin-top: 20px !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
 }
 
 /* ── Timer progress bar ── */
 .swal2-timer-progress-bar {
-  background: rgba(102, 126, 234, 0.5) !important;
-}
-
-/* ── Backdrop ── */
-.swal2-backdrop-show {
-  background: rgba(31, 41, 55, 0.45) !important;
-  backdrop-filter: blur(4px) !important;
+  background: rgba(102, 126, 234, 0.6) !important;
 }
 
 /* ── Validation message ── */
@@ -985,6 +1048,22 @@ body {
   font-family: 'Poppins', sans-serif !important;
   border-radius: 8px !important;
   font-size: 0.8rem !important;
+  margin: 8px 0 0 !important;
+}
+
+/* ── Mobile: full-width popup on small screens ── */
+@media (max-width: 480px) {
+  .swal-popup {
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+    width: 92vw !important;
+    max-width: 92vw !important;
+  }
+
+  .swal-cat-edit-popup {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
 }
 
 /* ══════════════════════════════════════════
