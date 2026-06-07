@@ -814,3 +814,58 @@ body {
   transition: background 0.3s, opacity 0.3s;
   font-size: 0.75rem;
 }
+
+/* ── Cycle Preview ── */
+.cycle-preview {
+  background: #f4f7ff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 38px;
+}
+
+.cycle-pill {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--primary), var(--primary2));
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 50px;
+  margin-right: 4px;
+}
+
+.cycle-pill-b {
+  background: linear-gradient(135deg, #00897b, #00bcd4);
+}
+
+/* ── Input with suffix ── */
+.input-with-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-suffix .form-control {
+  padding-right: 34px;
+}
+
+.input-suffix {
+  position: absolute;
+  right: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* ── Field hint ── */
+.field-hint {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 3px;
+}

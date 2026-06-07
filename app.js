@@ -274,20 +274,38 @@ const App = {
         const s = this.data.settings;
         document.getElementById('settingName').value = s.name;
         document.getElementById('settingIncome').value = s.monthlyIncome;
+        document.getElementById('settingPayday1Day').value = s.payday1.day;
         document.getElementById('settingPayday1Amount').value = s.payday1.amount;
+        document.getElementById('settingPayday2Day').value = s.payday2.day;
         document.getElementById('settingPayday2Amount').value = s.payday2.amount;
         document.getElementById('settingRate').value = s.exchangeRate;
-        const chatId = TG.getChatId();
-        document.getElementById('settingChatId').value = chatId || '';
+        document.getElementById('settingChatId').value = TG.getChatId() || '';
         document.getElementById('settingNotify').checked = TG.isEnabled();
+        this._updateCyclePreview();
         new bootstrap.Modal(document.getElementById('settingsModal')).show();
     },
 
     saveSettings() {
         const s = this.data.settings;
+        const p1 = parseInt(document.getElementById('settingPayday1Day').value) || 5;
+        const p2 = parseInt(document.getElementById('settingPayday2Day').value) || 15;
+
+        // Validate: p1 and p2 must be different, 1–28
+        if (p1 === p2 || p1 < 1 || p1 > 28 || p2 < 1 || p2 > 28) {
+            UI.toast('Payday days must be different and between 1–28', 'error');
+            return;
+        }
+        // p1 must be < p2 so Cycle A stays within one month
+        if (p1 >= p2) {
+            UI.toast('Payday 1 day must be before Payday 2 day', 'error');
+            return;
+        }
+
         s.name = document.getElementById('settingName').value.trim() || 'User';
         s.monthlyIncome = parseFloat(document.getElementById('settingIncome').value) || 320;
+        s.payday1.day = p1;
         s.payday1.amount = parseFloat(document.getElementById('settingPayday1Amount').value) || 160;
+        s.payday2.day = p2;
         s.payday2.amount = parseFloat(document.getElementById('settingPayday2Amount').value) || 160;
         s.exchangeRate = parseFloat(document.getElementById('settingRate').value) || 4000;
 
@@ -300,6 +318,29 @@ const App = {
         UI.toast('Settings saved');
         this._syncNotifyToggle();
         this.render();
+    },
+
+    /* Live cycle preview inside settings modal */
+    _updateCyclePreview() {
+        const p1 = parseInt(document.getElementById('settingPayday1Day').value) || 5;
+        const p2 = parseInt(document.getElementById('settingPayday2Day').value) || 15;
+        const el = document.getElementById('cyclePreview');
+        if (!el) return;
+        if (p1 >= p2 || p1 < 1 || p1 > 28 || p2 < 1 || p2 > 28) {
+            el.textContent = '⚠️ Payday 1 must be before Payday 2 (1–28)';
+            el.style.color = 'var(--danger)';
+        } else {
+            el.innerHTML =
+                `<span class="cycle-pill">Cycle A</span> ${this._ordinal(p1)} → ${this._ordinal(p2 - 1)}&nbsp;&nbsp;` +
+                `<span class="cycle-pill cycle-pill-b">Cycle B</span> ${this._ordinal(p2)} → ${this._ordinal(p1 - 1)} <em>(next month)</em>`;
+            el.style.color = 'var(--text)';
+        }
+    },
+
+    _ordinal(n) {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
     },
 
     /* ─────────────── REPORTS ─────────────── */
@@ -373,6 +414,11 @@ const App = {
         document.getElementById('expenseCurrency').addEventListener('change', e => {
             document.getElementById('amountCurrencyLabel').textContent =
                 e.target.value === 'KHR' ? '(KHR ÷ 4000 = USD)' : '(USD)';
+        });
+
+        // Live cycle preview when payday days change
+        ['settingPayday1Day', 'settingPayday2Day'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => this._updateCyclePreview());
         });
     }
 };

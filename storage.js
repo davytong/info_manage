@@ -33,9 +33,11 @@ const Storage = {
             if (!raw) return this._defaults();
             const data = JSON.parse(raw);
             const def = this._defaults();
-            // merge — keep saved settings/transactions, fallback to defaults
+            // Deep-merge payday objects so .day is never lost
+            const p1 = { ...def.settings.payday1, ...(data.settings?.payday1 || {}) };
+            const p2 = { ...def.settings.payday2, ...(data.settings?.payday2 || {}) };
             return {
-                settings: { ...def.settings, ...(data.settings || {}) },
+                settings: { ...def.settings, ...(data.settings || {}), payday1: p1, payday2: p2 },
                 budgets: { ...def.budgets, ...(data.budgets || {}) },
                 transactions: data.transactions || []
             };

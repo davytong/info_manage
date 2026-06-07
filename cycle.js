@@ -3,34 +3,36 @@
 const Cycle = {
     /**
      * Get current pay cycle based on today's date and settings.
-     * Cycle A: 5th → 14th  (payday on 5th, income $160)
-     * Cycle B: 15th → 4th  (payday on 15th, income $160)
+     *
+     * Cycle A: payday1.day  →  (payday2.day - 1)    e.g. 5th  → 14th
+     * Cycle B: payday2.day  →  (payday1.day - 1)    e.g. 15th →  4th (crosses month)
+     *
+     * Both payday days are fully configurable via settings.
      */
     getCurrent(settings) {
         const today = new Date();
         const day = today.getDate();
         const month = today.getMonth();
         const year = today.getFullYear();
-        const p1 = settings.payday1.day;  // 5
-        const p2 = settings.payday2.day;  // 15
+        const p1 = settings.payday1.day;   // default 5
+        const p2 = settings.payday2.day;   // default 15
 
         let cycleStart, cycleEnd, nextPayday, income;
 
         if (day >= p1 && day < p2) {
-            // Cycle A: 5th → 14th
+            // ── Cycle A: p1 → (p2-1), same month ──
             cycleStart = new Date(year, month, p1);
             cycleEnd = new Date(year, month, p2 - 1);
             nextPayday = new Date(year, month, p2);
             income = settings.payday1.amount;
         } else {
-            // Cycle B: 15th → 4th of next month
+            // ── Cycle B: p2 → (p1-1 next month), crosses month boundary ──
             if (day >= p2) {
-                // in same month from 15th onwards
                 cycleStart = new Date(year, month, p2);
                 cycleEnd = new Date(year, month + 1, p1 - 1);
                 nextPayday = new Date(year, month + 1, p1);
             } else {
-                // in next month, days 1–4
+                // early in month (days 1 → p1-1)
                 cycleStart = new Date(year, month - 1, p2);
                 cycleEnd = new Date(year, month, p1 - 1);
                 nextPayday = new Date(year, month, p1);
