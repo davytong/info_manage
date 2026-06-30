@@ -5,22 +5,145 @@
 
 /* ── Variables ── */
 :root {
-  --primary: #667eea;
-  --primary2: #764ba2;
-  --success: #00c853;
-  --warning: #ff9800;
-  --danger: #ff5252;
-  --info: #00bcd4;
-  --bg: #f4f7ff;
+  --primary: #059669;
+  --primary2: #0d9488;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --bg: #f4fdfa;
   --card: #ffffff;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --shadow: 0 4px 24px rgba(102, 126, 234, 0.10);
-  --shadow-lg: 0 8px 40px rgba(102, 126, 234, 0.18);
+  --text: #0f172a;
+  --muted: #475569;
+  --border: #e2e8f0;
+  --shadow: 0 4px 24px rgba(13, 148, 136, 0.08);
+  --shadow-lg: 0 8px 40px rgba(13, 148, 136, 0.14);
   --radius: 18px;
   --radius-sm: 12px;
 }
+
+/* ── Dark Mode Variables ── */
+body.dark-mode {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --border: #334155;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Smooth Theme Transitions ── */
+body, .cat-card, .tx-row, .chart-card, .glass-card, .top-bar, .modal-content, .form-control, .form-select, .btn-icon, .top-btn, .cycle-preview, .cat-add-btn {
+  transition: background 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease;
+}
+
+/* ── Dark Mode Modals & Elements Override ── */
+body.dark-mode .modal-content {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: #0f172a !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25) !important;
+}
+body.dark-mode .form-control::placeholder {
+  color: #64748b !important;
+}
+body.dark-mode .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+body.dark-mode .cat-add-btn {
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+body.dark-mode .cat-add-btn:hover {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+}
+body.dark-mode .btn-icon {
+  background: #334155 !important;
+  color: var(--muted) !important;
+}
+body.dark-mode .btn-icon:hover {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body.dark-mode .btn-icon.danger:hover {
+  background: var(--danger) !important;
+}
+body.dark-mode .cycle-preview {
+  background: #0f172a !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* ── Dark Mode SweetAlert2 Overrides ── */
+body.dark-mode .swal-popup,
+body.dark-mode .swal2-popup {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid var(--border) !important;
+}
+body.dark-mode .swal2-title {
+  color: var(--text) !important;
+}
+body.dark-mode .swal2-html-container {
+  color: var(--muted) !important;
+}
+body.dark-mode .swal-input,
+body.dark-mode .swal2-input,
+body.dark-mode .cef-input {
+  background-color: #0f172a !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+body.dark-mode .swal-input:focus,
+body.dark-mode .swal2-input:focus,
+body.dark-mode .cef-input:focus {
+  border-color: var(--primary) !important;
+}
+body.dark-mode .swal2-validation-message {
+  background: #450a0a !important;
+  color: #fca5a5 !important;
+}
+body.dark-mode .emoji-btn {
+  background: #0f172a !important;
+  color: var(--text) !important;
+}
+body.dark-mode .emoji-btn:hover {
+  background: #1e293b !important;
+}
+body.dark-mode .emoji-btn.active {
+  border-color: var(--primary) !important;
+  background: #334155 !important;
+}
+body.dark-mode .color-swatch.active {
+  border-color: var(--card) !important;
+  outline-color: var(--text) !important;
+}
+body.dark-mode .cat-edit-btn {
+  background: #334155 !important;
+  color: var(--muted) !important;
+}
+body.dark-mode .cat-edit-btn:hover {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+body.dark-mode .quick-scroll::-webkit-scrollbar-thumb {
+  background: #334155 !important;
+}
+
 
 /* ── Reset & Base ── */
 *,
@@ -1261,4 +1384,276 @@ body {
   border-color: #fff;
   outline: 2px solid var(--text);
   transform: scale(1.15);
+}
+
+
+/* ── Must Remain / Savings Section ── */
+.hero-must-remain {
+  margin-top: 16px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hero-must-remain-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.hero-must-remain-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.84rem;
+}
+
+.hero-must-remain-row + .hero-must-remain-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-must-remain-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.hero-must-remain-val {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Plan value — light gold */
+.hero-must-remain-val.mr-plan {
+  color: #fde68a;
+}
+
+/* Actual value — light cyan */
+.hero-must-remain-val.mr-actual {
+  color: #a7f3d0;
+}
+
+/* Diff: under plan = bright green pill, over plan = bright red pill */
+.hero-must-remain-val.mr-under {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.2);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.hero-must-remain-val.mr-over {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.2);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.hero-must-remain-status {
+  margin-top: 4px;
+  padding-top: 10px !important;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2) !important;
+}
+
+
+/* ── Category Must Remain Row ── */
+.cat-must-remain {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  padding: 4px 0;
+  margin-top: 2px;
+  border-top: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+
+/* ── One-time category card styling ── */
+.cat-card-once {
+  border: 2px dashed rgba(100, 100, 200, 0.2);
+}
+
+.cat-card-done {
+  border-color: var(--success);
+  background: linear-gradient(135deg, rgba(0, 200, 83, 0.03), rgba(0, 200, 83, 0.08));
+}
+
+.cat-paid-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600; 
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin: 6px 0;
+}
+
+.cat-paid-badge.paid {
+  background: rgba(0, 200, 83, 0.12);
+  color: var(--success);
+}
+
+.cat-paid-badge.unpaid {
+  background: rgba(255, 152, 0, 0.12);
+  color: var(--warning);
+}
+
+.cat-freq-badge {
+  font-size: 0.62rem;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+
+/* ── Inactive cycle card (dimmed) ── */
+.cat-card-inactive {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+}
+
+.cat-paid-badge.other-cycle {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6b7280;
+}
+
+/* ── Responsive Styling (Mobile Optimization) ── */
+@media (max-width: 576px) {
+  .top-bar {
+    padding: 10px 14px;
+  }
+  .top-bar-title span.d-none {
+    display: none !important;
+  }
+  .top-btn {
+    padding: 5px 10px;
+    font-size: 0.73rem;
+  }
+  .top-btn i {
+    margin-right: 2px;
+  }
+  
+  .glass-card {
+    padding: 20px 16px 18px;
+  }
+  .hero-greeting {
+    font-size: 0.88rem;
+  }
+  .hero-cycle {
+    font-size: 0.76rem;
+    margin-bottom: 12px;
+  }
+  .hero-safe-label {
+    font-size: 0.72rem;
+  }
+  .hero-safe-amount {
+    font-size: 2.2rem;
+    margin-bottom: 16px;
+  }
+  .hero-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .hero-stat {
+    padding: 8px 6px;
+  }
+  .hero-stat-val {
+    font-size: 0.88rem;
+  }
+  .hero-stat-label {
+    font-size: 0.65rem;
+  }
+  .hero-must-remain {
+    padding: 10px 12px;
+    margin-top: 14px;
+  }
+  .hero-must-remain-title {
+    font-size: 0.78rem;
+  }
+  .hero-must-remain-row {
+    font-size: 0.76rem;
+    padding: 4px 0;
+  }
+
+  .cat-card {
+    padding: 12px 10px 10px;
+    gap: 4px;
+    min-height: 180px;
+  }
+  .cat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+  }
+  .cat-name {
+    font-size: 0.8rem;
+  }
+  .cat-budget {
+    font-size: 0.68rem;
+  }
+  .cat-amounts {
+    font-size: 0.72rem;
+  }
+  .cat-must-remain {
+    font-size: 0.65rem;
+  }
+  .cat-add-btn {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+  .cat-paid-badge {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    margin: 4px 0;
+  }
+
+  .tx-row {
+    padding: 10px;
+    gap: 8px;
+  }
+  .tx-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+  .tx-cat {
+    font-size: 0.78rem;
+  }
+  .tx-note {
+    font-size: 0.7rem;
+  }
+  .tx-date {
+    font-size: 0.68rem;
+  }
+  .tx-amount {
+    font-size: 0.82rem;
+  }
+  .btn-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.68rem;
+  }
+
+  .chart-card {
+    padding: 14px;
+  }
+  .chart-title {
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+  }
+  
+  .fab {
+    width: 52px;
+    height: 52px;
+    font-size: 1.35rem;
+    bottom: 20px;
+    right: 16px;
+  }
 }

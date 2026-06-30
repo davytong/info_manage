@@ -132,13 +132,38 @@ const UI = {
     </div>`;
   },
 
-  renderHero(settings, cycleInfo, cycleSpent) {
+  renderHero(settings, cycleInfo, cycleSpent, mustRemainInfo) {
     const remaining = cycleInfo.income - cycleSpent;
     const safeDaily = cycleInfo.daysUntilPayday > 0 ? Math.max(0, remaining / cycleInfo.daysUntilPayday) : 0;
     const cycleLabel = Cycle.formatCycleLabel(cycleInfo.cycleStart, cycleInfo.cycleEnd);
     const greetingHour = new Date().getHours();
     const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
     const safeDailyColor = safeDaily < 5 ? '#ff5252' : safeDaily < 10 ? '#ff9800' : '#00c853';
+
+    // Must remain info
+    const totalMustRemain = mustRemainInfo ? mustRemainInfo.totalMustRemain : 0;
+    const totalActualRemaining = mustRemainInfo ? mustRemainInfo.totalActualRemaining : 0;
+    const totalDiff = mustRemainInfo ? mustRemainInfo.totalDiff : 0;
+    const isOver = mustRemainInfo ? mustRemainInfo.isOver : false;
+
+    const mustRemainHTML = `
+      <div class="hero-must-remain">
+        <div class="hero-must-remain-title"><i class="fa-solid fa-shield-halved me-1"></i> Must Remain (All Categories)</div>
+        <div class="hero-must-remain-row">
+          <span class="hero-must-remain-label">Should have left by today</span>
+          <span class="hero-must-remain-val mr-plan">$${totalMustRemain.toFixed(2)}</span>
+        </div>
+        <div class="hero-must-remain-row">
+          <span class="hero-must-remain-label">Actually have left</span>
+          <span class="hero-must-remain-val mr-actual">$${totalActualRemaining.toFixed(2)}</span>
+        </div>
+        <div class="hero-must-remain-row hero-must-remain-status">
+          <span class="hero-must-remain-label">
+            ${isOver ? '<i class="fa-solid fa-circle-exclamation me-1"></i> Over plan by' : '<i class="fa-solid fa-circle-check me-1"></i> Under plan by'}
+          </span>
+          <span class="hero-must-remain-val mr-diff ${isOver ? 'mr-over' : 'mr-under'}">$${Math.abs(totalDiff).toFixed(2)}</span>
+        </div>
+      </div>`;
 
     return `<div class="hero-card glass-card">
       <div class="hero-greeting">${greeting}, ${settings.name} 👋</div>
@@ -147,8 +172,8 @@ const UI = {
       <div class="hero-safe-amount" style="color:${safeDailyColor}" id="heroSafe">$${safeDaily.toFixed(2)}<span>/day</span></div>
       <div class="hero-stats">
         <div class="hero-stat">
-          <div class="hero-stat-val" id="heroIncome">$${cycleInfo.income.toFixed(2)}</div>
-          <div class="hero-stat-label">Income</div>
+          <div class="hero-stat-val" id="heroIncome">$${cycleInfo.income.toFixed(2)}${cycleInfo.addedIncome > 0 ? `<span style="font-size:.68rem;font-weight:400;display:block;opacity:.85">(+$${cycleInfo.addedIncome.toFixed(0)} added)</span>` : ''}</div>
+          <div class="hero-stat-label">Cycle Income</div>
         </div>
         <div class="hero-stat">
           <div class="hero-stat-val text-warning" id="heroSpent">$${cycleSpent.toFixed(2)}</div>
@@ -163,6 +188,7 @@ const UI = {
           <div class="hero-stat-label">Days Left</div>
         </div>
       </div>
+      ${mustRemainHTML}
       <div class="hero-progress-wrap">
         <div class="d-flex justify-content-between mb-1 small" style="opacity:.8">
           <span>Cycle Budget Used</span>
@@ -175,24 +201,77 @@ const UI = {
     </div>`;
   },
 
+  renderIconHTML(iconStr) {
+    if (!iconStr) return '';
+    if (iconStr.startsWith('fa-') || iconStr.includes(' ')) {
+      return `<i class="${iconStr}"></i>`;
+    }
+    return iconStr;
+  },
+
   renderCategoryCard(key, stats) {
     const s = stats[key];
+
+    if (s.frequency === 'once') {
+      // ── One-time payment card ──
+      const isActive = s.isActiveCycle;
+      const cycleTag = s.payCycle === 'A' ? 'Payday 1' : 'Payday 2';
+      const paidLabel = !isActive
+        ? `<span class="cat-paid-badge other-cycle">🔒 ${cycleTag}</span>`
+        : s.isPaid
+          ? `<span class="cat-paid-badge paid">✅ Paid</span>`
+          : `<span class="cat-paid-badge unpaid">⏳ ${cycleTag}</span>`;
+      return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
+        <div class="cat-card cat-card-once ${s.isPaid ? 'cat-card-done' : ''} ${!isActive ? 'cat-card-inactive' : ''}" data-cat="${key}">
+          <div class="cat-card-top">
+            <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${this.renderIconHTML(s.icon)}</div>
+            <button class="cat-edit-btn" onclick="event.stopPropagation();App.openEditCategory('${key}')" title="Edit category">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          </div>
+          <div class="cat-name">${s.label}</div>
+          <div class="cat-budget">$${s.cycleBudget.toFixed(2)} <span class="cat-freq-badge">once</span></div>
+          ${paidLabel}
+          ${isActive ? this.renderProgressBar(s.pct, s.status) : ''}
+          ${isActive ? `<div class="cat-amounts">
+            <span class="cat-spent">Spent: $${s.spent.toFixed(2)}</span>
+            <span class="cat-remain" style="color:${s.over ? 'var(--danger)' : 'var(--success)'}">
+              Left: ${s.over ? '-' : ''}$${Math.abs(s.remaining).toFixed(2)}
+            </span>
+          </div>` : ''}
+          <div class="cat-pct-label" style="color:${s.color}">${isActive ? s.pct.toFixed(0) + '%' : '—'}</div>
+          <button class="cat-add-btn" onclick="App.openQuickAdd('${key}')">
+            <i class="fa-solid fa-plus"></i> Add
+          </button>
+        </div>
+      </div>`;
+    }
+
+    // ── Daily spending card ──
+    const diffColor = s.diff >= 0 ? 'var(--success)' : 'var(--danger)';
+    const diffIcon = s.diff >= 0 
+      ? '<i class="fa-solid fa-circle-check me-1"></i>' 
+      : '<i class="fa-solid fa-circle-exclamation me-1"></i>';
     return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
       <div class="cat-card" data-cat="${key}">
         <div class="cat-card-top">
-          <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${s.icon}</div>
+          <div class="cat-icon" style="background:${s.color}22;color:${s.color}">${this.renderIconHTML(s.icon)}</div>
           <button class="cat-edit-btn" onclick="event.stopPropagation();App.openEditCategory('${key}')" title="Edit category">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
         </div>
         <div class="cat-name">${s.label}</div>
-        <div class="cat-budget">Budget: $${s.budget}</div>
+        <div class="cat-budget">$${s.cycleBudget.toFixed(2)}/cycle • $${s.dailyRate.toFixed(2)}/day</div>
         ${this.renderProgressBar(s.pct, s.status)}
         <div class="cat-amounts">
-          <span class="cat-spent">$${s.spent.toFixed(2)}</span>
+          <span class="cat-spent">Spent: $${s.spent.toFixed(2)}</span>
           <span class="cat-remain" style="color:${s.over ? 'var(--danger)' : 'var(--success)'}">
-            ${s.over ? '-' : ''}$${Math.abs(s.remaining).toFixed(2)}
+            Left: ${s.over ? '-' : ''}$${Math.abs(s.remaining).toFixed(2)}
           </span>
+        </div>
+        <div class="cat-must-remain">
+          <span>Must remain: $${s.mustRemain.toFixed(2)}</span>
+          <span style="color:${diffColor}; display:inline-flex; align-items:center;">${diffIcon} ${s.diff >= 0 ? '+' : ''}$${s.diff.toFixed(2)}</span>
         </div>
         <div class="cat-pct-label" style="color:${s.color}">${s.pct.toFixed(0)}%</div>
         <button class="cat-add-btn" onclick="App.openQuickAdd('${key}')">
@@ -203,16 +282,26 @@ const UI = {
   },
 
   renderTransaction(tx, budgets) {
-    const cat = budgets[tx.category] || { icon: '💸', label: tx.category, color: '#667eea' };
+    let cat = budgets[tx.category];
+    if (tx.type === 'income' || tx.category === 'income') {
+      cat = { icon: 'fa-solid fa-wallet', label: 'Income', color: '#00c853' };
+    }
+    if (!cat) {
+      cat = { icon: 'fa-solid fa-receipt', label: tx.category, color: '#667eea' };
+    }
+    const isInc = tx.type === 'income';
+    const amtColor = isInc ? 'var(--success)' : 'var(--danger)';
+    const amtPrefix = isInc ? '+$' : '-$';
+
     return `<div class="tx-row fade-in-card" data-id="${tx.id}">
-      <div class="tx-icon" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
+      <div class="tx-icon" style="background:${cat.color}22;color:${cat.color}">${this.renderIconHTML(cat.icon)}</div>
       <div class="tx-info">
         <div class="tx-cat">${cat.label}</div>
         <div class="tx-note">${tx.note || '—'}</div>
         <div class="tx-date">${this.formatDate(tx.date)}</div>
       </div>
       <div class="tx-right">
-        <div class="tx-amount">-$${tx.amount.toFixed(2)}</div>
+        <div class="tx-amount" style="color:${amtColor}">${amtPrefix}${tx.amount.toFixed(2)}</div>
         <div class="tx-actions">
           <button class="btn-icon" onclick="App.editTransaction('${tx.id}')"><i class="fa-solid fa-pen"></i></button>
           <button class="btn-icon danger" onclick="App.deleteTransaction('${tx.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -223,7 +312,7 @@ const UI = {
 
   renderQuickBtn(catKey, cat, amount) {
     return `<button class="quick-btn" style="--qc:${cat.color}" onclick="App.quickAdd('${catKey}', ${amount})">
-      <span class="quick-icon">${cat.icon}</span>
+      <span class="quick-icon">${this.renderIconHTML(cat.icon)}</span>
       <span class="quick-label">+$${amount}</span>
     </button>`;
   },
@@ -234,9 +323,37 @@ const UI = {
     if (!sel) return;
     const current = sel.value;
     sel.innerHTML = '<option value="">— Select Category —</option>' +
-      Object.entries(budgets).map(([k, b]) =>
-        `<option value="${k}">${b.icon} ${b.label}</option>`
-      ).join('');
+      Object.entries(budgets).map(([k, b]) => {
+        const iconPrefix = (b.icon.startsWith('fa-') || b.icon.includes(' ')) ? '' : b.icon + ' ';
+        return `<option value="${k}">${iconPrefix}${b.label}</option>`;
+      }).join('');
     if (current && budgets[current]) sel.value = current;
+  },
+
+  rebuildTxFilterCatSelect(budgets) {
+    const sel = document.getElementById('txFilterCategory');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="all">All Categories</option>' +
+      '<option value="income">Income</option>' +
+      Object.entries(budgets).map(([k, b]) => {
+        const iconPrefix = (b.icon.startsWith('fa-') || b.icon.includes(' ')) ? '' : b.icon + ' ';
+        return `<option value="${k}">${iconPrefix}${b.label}</option>`;
+      }).join('');
+    if (current) sel.value = current;
+  },
+
+  renderAddCategoryCard() {
+    return `<div class="col-6 col-md-4 col-lg-3 mb-3 fade-in-card">
+      <div class="cat-card d-flex align-items-center justify-content-center" style="border: 2px dashed var(--border); background: transparent; cursor: pointer; min-height: 195px;" onclick="App.openAddCategory()">
+        <div class="text-center">
+          <div class="cat-icon mx-auto mb-2" style="background: var(--primary)15; color: var(--primary)">
+            <i class="fa-solid fa-folder-plus"></i>
+          </div>
+          <div class="cat-name">Add Category</div>
+          <div class="cat-budget" style="font-size:.7rem; margin-top:2px;">Custom limits</div>
+        </div>
+      </div>
+    </div>`;
   }
 };

@@ -9,7 +9,7 @@ const Cycle = {
      *
      * Both payday days are fully configurable via settings.
      */
-    getCurrent(settings) {
+    getCurrent(settings, transactions = []) {
         const today = new Date();
         const day = today.getDate();
         const month = today.getMonth();
@@ -17,7 +17,7 @@ const Cycle = {
         const p1 = settings.payday1.day;   // default 5
         const p2 = settings.payday2.day;   // default 15
 
-        let cycleStart, cycleEnd, nextPayday, income;
+        let cycleStart, cycleEnd, nextPayday, income, cycleLabel;
 
         if (day >= p1 && day < p2) {
             // ── Cycle A: p1 → (p2-1), same month ──
@@ -25,6 +25,7 @@ const Cycle = {
             cycleEnd = new Date(year, month, p2 - 1);
             nextPayday = new Date(year, month, p2);
             income = settings.payday1.amount;
+            cycleLabel = 'A';
         } else {
             // ── Cycle B: p2 → (p1-1 next month), crosses month boundary ──
             if (day >= p2) {
@@ -38,12 +39,35 @@ const Cycle = {
                 nextPayday = new Date(year, month, p1);
             }
             income = settings.payday2.amount;
+            cycleLabel = 'B';
         }
 
         const daysUntilPayday = Math.max(0, Math.ceil((nextPayday - today) / 86400000));
         const totalDays = Math.round((cycleEnd - cycleStart) / 86400000) + 1;
 
-        return { cycleStart, cycleEnd, nextPayday, income, daysUntilPayday, totalDays };
+        // Dynamic Calculations
+        const cycleTxns = this.getTransactionsForCycle(transactions, cycleStart, cycleEnd);
+        const cycleSpent = cycleTxns.filter(t => t.type !== 'income').reduce((s, t) => s + t.amount, 0);
+        const cycleAddedIncome = cycleTxns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+        
+        const totalIncome = income + cycleAddedIncome;
+        const remaining = totalIncome - cycleSpent;
+        const safeDaily = daysUntilPayday > 0 ? Math.max(0, remaining / daysUntilPayday) : 0;
+
+        return { 
+            cycleStart, 
+            cycleEnd, 
+            nextPayday, 
+            baseIncome: income, 
+            addedIncome: cycleAddedIncome,
+            income: totalIncome, 
+            spent: cycleSpent,
+            remaining,
+            daysUntilPayday, 
+            totalDays,
+            cycleLabel,
+            safeDaily
+        };
     },
 
     /**
@@ -74,6 +98,7 @@ const Cycle = {
     getSpendingByCategory(cycleTxns) {
         const map = {};
         cycleTxns.forEach(tx => {
+            if (tx.type === 'income') return;
             if (!map[tx.category]) map[tx.category] = 0;
             map[tx.category] += tx.amount;
         });
@@ -86,6 +111,7 @@ const Cycle = {
     getMonthlySpending(transactions) {
         const map = {};
         transactions.forEach(tx => {
+            if (tx.type === 'income') return;
             const d = new Date(tx.date);
             const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (!map[k]) map[k] = 0;

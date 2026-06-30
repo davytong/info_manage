@@ -5,8 +5,34 @@ const App = {
     charts: {},
     editingTxId: null,
     _warnedCats: new Set(), // track per-session budget warnings
+    txLimit: 10,
+
+    initTheme() {
+        const theme = localStorage.getItem('app_theme') || 'light';
+        if (theme === 'dark') {
+            document.body.classList.add('dark-mode');
+            const toggleIcon = document.querySelector('#btnThemeToggle i');
+            if (toggleIcon) {
+                toggleIcon.className = 'fa-solid fa-sun';
+            }
+        }
+    },
+
+    toggleTheme() {
+        const isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('app_theme', isDark ? 'dark' : 'light');
+        const toggleIcon = document.querySelector('#btnThemeToggle i');
+        if (toggleIcon) {
+            toggleIcon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+        const cycleInfo = Cycle.getCurrent(this.data.settings, this.data.transactions);
+        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd, cycleInfo.cycleLabel);
+        this.renderCharts(catStats);
+    },
 
     init() {
+        this.initTheme();
+        this.txLimit = 10;
         this.data = Storage.load();
         this.render();
         this.bindGlobalEvents();
@@ -21,15 +47,15 @@ const App = {
     /* ─────────────── RENDER ─────────────── */
     render() {
         const { settings, budgets, transactions } = this.data;
-        const cycleInfo = Cycle.getCurrent(settings);
-        const cycleTxns = Cycle.getTransactionsForCycle(transactions, cycleInfo.cycleStart, cycleInfo.cycleEnd);
-        const cycleSpent = cycleTxns.reduce((s, t) => s + t.amount, 0);
-        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd);
+        const cycleInfo = Cycle.getCurrent(settings, transactions);
+        const cycleSpent = cycleInfo.spent;
+        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd, cycleInfo.cycleLabel);
+        const mustRemainInfo = Budget.getMustRemainInfo(this.data, catStats);
 
-        document.getElementById('heroSection').innerHTML = UI.renderHero(settings, cycleInfo, cycleSpent);
+        document.getElementById('heroSection').innerHTML = UI.renderHero(settings, cycleInfo, cycleSpent, mustRemainInfo);
 
         const catGrid = document.getElementById('catGrid');
-        catGrid.innerHTML = Object.keys(budgets).map(k => UI.renderCategoryCard(k, catStats)).join('');
+        catGrid.innerHTML = Object.keys(budgets).map(k => UI.renderCategoryCard(k, catStats)).join('') + UI.renderAddCategoryCard();
 
         this.renderQuickButtons();
         this.renderTransactions();
@@ -37,6 +63,7 @@ const App = {
         this.renderCharts(catStats);
         // keep expense modal category list in sync
         UI.rebuildCatSelect(budgets);
+        UI.rebuildTxFilterCatSelect(budgets);
     },
 
     renderQuickButtons() {
@@ -54,13 +81,48 @@ const App = {
     },
 
     renderTransactions() {
-        const recent = Budget.getRecentTransactions(this.data, 10);
+        const searchInput = document.getElementById('txSearchInput');
+        const catFilter = document.getElementById('txFilterCategory');
+        const typeFilter = document.getElementById('txFilterType');
+
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const catVal = catFilter ? catFilter.value : 'all';
+        const typeVal = typeFilter ? typeFilter.value : 'all';
+
+        // Filter transactions
+        let filtered = this.data.transactions;
+
+        if (query) {
+            filtered = filtered.filter(tx => 
+                (tx.note && tx.note.toLowerCase().includes(query)) ||
+                (tx.category && tx.category.toLowerCase().includes(query))
+            );
+        }
+
+        if (catVal !== 'all') {
+            filtered = filtered.filter(tx => tx.category === catVal);
+        }
+
+        if (typeVal !== 'all') {
+            filtered = filtered.filter(tx => tx.type === typeVal);
+        }
+
         const el = document.getElementById('recentTxns');
-        if (recent.length === 0) {
-            el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-receipt"></i><p>No transactions yet</p></div>`;
+        if (filtered.length === 0) {
+            el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-receipt"></i><p>No matching transactions found</p></div>`;
+            document.getElementById('loadMoreSection').style.display = 'none';
             return;
         }
-        el.innerHTML = recent.map(tx => UI.renderTransaction(tx, this.data.budgets)).join('');
+
+        // Paginate
+        const paginated = filtered.slice(0, this.txLimit);
+        el.innerHTML = paginated.map(tx => UI.renderTransaction(tx, this.data.budgets)).join('');
+
+        // Handle load more visibility
+        const loadMore = document.getElementById('loadMoreSection');
+        if (loadMore) {
+            loadMore.style.display = filtered.length > this.txLimit ? 'block' : 'none';
+        }
     },
 
     renderCharts(catStats) {
@@ -94,6 +156,10 @@ const App = {
         if (!ctx) return;
         if (this.charts.bar) this.charts.bar.destroy();
         const monthly = Budget.getMonthlyReport(this.data);
+        const isDark = document.body.classList.contains('dark-mode');
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f3f4f6';
+        const tickColor = isDark ? '#94a3b8' : '#6b7280';
+        
         this.charts.bar = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -101,7 +167,7 @@ const App = {
                 datasets: [{
                     label: 'Spending',
                     data: monthly.map(m => m.amount),
-                    backgroundColor: 'rgba(102,126,234,0.7)',
+                    backgroundColor: isDark ? 'rgba(13,148,136,0.85)' : 'rgba(13,148,136,0.7)',
                     borderRadius: 8,
                     borderSkipped: false
                 }]
@@ -109,8 +175,8 @@ const App = {
             options: {
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#6b7280' } },
-                    y: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280', callback: v => '$' + v } }
+                    x: { grid: { display: false }, ticks: { color: tickColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => '$' + v } }
                 },
                 animation: { duration: 800 }
             }
@@ -125,9 +191,29 @@ const App = {
             note: 'Quick add',
             date: new Date().toISOString().slice(0, 10)
         });
-        UI.toast(`${this.data.budgets[catKey].icon} +$${amount} added`);
+        UI.toast(`+$${amount.toFixed(2)} logged for ${this.data.budgets[catKey].label}`);
         this.render();
         this._postSaveNotify(tx);
+    },
+
+    _syncModalType() {
+        const isIncome = document.querySelector('input[name="txType"]:checked').value === 'income';
+        const catGroup = document.getElementById('modalCatGroup');
+        if (catGroup) {
+            catGroup.style.display = isIncome ? 'none' : 'block';
+        }
+        const modalTitle = document.getElementById('expenseModal').querySelector('.modal-title');
+        if (modalTitle) {
+            if (this.editingTxId) {
+                modalTitle.innerHTML = isIncome 
+                    ? '<i class="fa-solid fa-pen-to-square me-1"></i> Edit Income' 
+                    : '<i class="fa-solid fa-pen-to-square me-1"></i> Edit Expense';
+            } else {
+                modalTitle.innerHTML = isIncome 
+                    ? '<i class="fa-solid fa-plus me-1"></i> Add Income' 
+                    : '<i class="fa-solid fa-plus me-1"></i> Add Expense';
+            }
+        }
     },
 
     openQuickAdd(catKey) {
@@ -135,8 +221,11 @@ const App = {
         this.editingTxId = null;
         document.getElementById('expenseForm').reset();
         document.getElementById('expenseDate').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('txTypeExpense').checked = true;
+        this._syncModalType();
         document.getElementById('modalCatSelect').value = catKey;
-        document.getElementById('expenseModal').querySelector('.modal-title').innerHTML = `${cat.icon} ${cat.label}`;
+        document.getElementById('expenseModal').querySelector('.modal-title').innerHTML =
+            `<span style="display:inline-flex; align-items:center; justify-content:center; margin-right:6px;">${UI.renderIconHTML(cat.icon)}</span> Add for ${cat.label}`;
         new bootstrap.Modal(document.getElementById('expenseModal')).show();
     },
 
@@ -145,7 +234,8 @@ const App = {
         this.editingTxId = null;
         document.getElementById('expenseForm').reset();
         document.getElementById('expenseDate').value = new Date().toISOString().slice(0, 10);
-        document.getElementById('expenseModal').querySelector('.modal-title').innerHTML = '✚ Add Expense';
+        document.getElementById('txTypeExpense').checked = true;
+        this._syncModalType();
         new bootstrap.Modal(document.getElementById('expenseModal')).show();
     },
 
@@ -153,10 +243,13 @@ const App = {
         const tx = this.data.transactions.find(t => t.id === id);
         if (!tx) return;
         this.editingTxId = id;
-        const cat = this.data.budgets[tx.category];
-        document.getElementById('expenseModal').querySelector('.modal-title').innerHTML =
-            `✏️ Edit — ${cat ? cat.icon + ' ' + cat.label : tx.category}`;
-        document.getElementById('modalCatSelect').value = tx.category;
+        document.getElementById('expenseForm').reset();
+        const isIncome = tx.type === 'income';
+        document.getElementById(isIncome ? 'txTypeIncome' : 'txTypeExpense').checked = true;
+        this._syncModalType();
+        if (!isIncome) {
+            document.getElementById('modalCatSelect').value = tx.category;
+        }
         document.getElementById('expenseAmount').value = tx.amount;
         document.getElementById('expenseNote').value = tx.note;
         document.getElementById('expenseDate').value = tx.date;
@@ -165,16 +258,17 @@ const App = {
     },
 
     saveExpense() {
-        const catKey = document.getElementById('modalCatSelect').value;
+        const isIncome = document.querySelector('input[name="txType"]:checked').value === 'income';
+        const catKey = isIncome ? 'income' : document.getElementById('modalCatSelect').value;
         const rawAmt = parseFloat(document.getElementById('expenseAmount').value);
         const currency = document.getElementById('expenseCurrency').value;
         const note = document.getElementById('expenseNote').value.trim();
         const date = document.getElementById('expenseDate').value;
 
-        if (!catKey || isNaN(rawAmt) || rawAmt <= 0) {
+        if ((!isIncome && !catKey) || isNaN(rawAmt) || rawAmt <= 0) {
             UI.alert({
                 title: 'Invalid input',
-                html: 'Please select a category and enter a valid amount.',
+                html: isIncome ? 'Please enter a valid amount.' : 'Please select a category and enter a valid amount.',
                 icon: 'error'
             });
             return;
@@ -186,24 +280,25 @@ const App = {
 
         bootstrap.Modal.getInstance(document.getElementById('expenseModal')).hide();
 
+        const type = isIncome ? 'income' : 'expense';
+
         if (this.editingTxId) {
-            Budget.updateTransaction(this.data, this.editingTxId, { category: catKey, amount, note, date });
+            Budget.updateTransaction(this.data, this.editingTxId, { type, category: catKey, amount, note, date });
             UI.toast('Transaction updated', 'info');
             this.render();
         } else {
-            const tx = Budget.addTransaction(this.data, { category: catKey, amount, note, date });
-            UI.toast(`${this.data.budgets[catKey].icon} Expense saved`);
+            const tx = Budget.addTransaction(this.data, { type, category: catKey, amount, note, date });
+            UI.toast(isIncome ? 'Income saved' : `${this.data.budgets[catKey]?.label || 'Expense'} saved`);
             this.render();
             this._postSaveNotify(tx);
         }
     },
-
     deleteTransaction(id) {
         const tx = this.data.transactions.find(t => t.id === id);
-        const cat = tx ? (this.data.budgets[tx.category] || { icon: '💸', label: tx.category }) : { icon: '💸', label: '' };
+        const cat = tx ? (this.data.budgets[tx.category] || { icon: 'fa-solid fa-receipt', label: tx.category }) : { icon: 'fa-solid fa-receipt', label: '' };
         UI.confirm({
             title: 'Delete transaction?',
-            html: `<span style="font-size:1.5rem">${cat.icon}</span><br><strong>${cat.label}</strong> — $${tx ? tx.amount.toFixed(2) : ''}`,
+            html: `<div style="font-size:1.6rem; display:inline-flex; align-items:center; justify-content:center; width:3rem; height:3rem; background:${tx.type === 'income' ? 'rgba(0,200,83,0.15)' : 'rgba(255,82,82,0.15)'}; color:${tx.type === 'income' ? 'var(--success)' : 'var(--danger)'}; border-radius:50%; margin-bottom:12px;">${UI.renderIconHTML(cat.icon)}</div><br><strong>${cat.label}</strong> — $${tx ? tx.amount.toFixed(2) : ''}`,
             icon: 'warning',
             confirmText: 'Yes, delete',
             cancelText: 'Cancel'
@@ -226,8 +321,8 @@ const App = {
         }
         if (!chatId) return; // not set up yet — don't auto-prompt, let user do it manually
 
-        const cycleInfo = Cycle.getCurrent(this.data.settings);
-        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd);
+        const cycleInfo = Cycle.getCurrent(this.data.settings, this.data.transactions);
+        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd, cycleInfo.cycleLabel);
 
         // Send expense alert
         await TG.notifyExpenseAdded(tx, this.data.budgets, catStats);
@@ -252,8 +347,8 @@ const App = {
         if (!btn) return;
         const on = TG.isEnabled();
         btn.innerHTML = on
-            ? '<i class="fa-solid fa-bell me-1"></i>ON'
-            : '<i class="fa-solid fa-bell-slash me-1"></i>OFF';
+            ? '<i class="fa-solid fa-bell"></i><span class="d-none d-sm-inline ms-1">ON</span>'
+            : '<i class="fa-solid fa-bell-slash"></i><span class="d-none d-sm-inline ms-1">OFF</span>';
         btn.title = on ? 'Notifications ON — click to disable' : 'Notifications OFF — click to enable';
         btn.style.background = on
             ? 'linear-gradient(135deg,#00c853,#00897b)'
@@ -288,26 +383,28 @@ const App = {
 
     /* ─────────────── EDIT CATEGORY ─────────────── */
 
-    // Predefined emoji list for the picker
-    _catEmojis: [
-        '🍔', '🍕', '🍜', '🍱', '🥗', '🍳', '🛒', '🥤',
-        '⛽', '🚗', '🏍️', '🚌', '✈️', '🚢', '🚲', '🛴',
-        '🏠', '🏡', '💡', '🔧', '🛁', '🪴', '🔑', '📦',
-        '👨‍👩‍👧', '👶', '🎓', '🏫', '❤️', '🎁', '🧸', '🎒',
-        '🛡️', '🏥', '💊', '🩺', '🔒', '🧯', '🚑', '⚕️',
-        '👤', '💆', '💄', '👗', '🎽', '🏋️', '🧴', '💅',
-        '🅿️', '🚧', '🪙', '💰', '📱', '💻', '🎮', '📷',
-        '🌿', '☕', '🍷', '🎵', '🎬', '📚', '🏖️', '🎯'
+    // Predefined Font Awesome icon list for the picker
+    _catIcons: [
+        'fa-solid fa-utensils', 'fa-solid fa-pizza-slice', 'fa-solid fa-mug-hot', 'fa-solid fa-cart-shopping',
+        'fa-solid fa-gas-pump', 'fa-solid fa-car', 'fa-solid fa-motorcycle', 'fa-solid fa-bus',
+        'fa-solid fa-house', 'fa-solid fa-wrench', 'fa-solid fa-plug', 'fa-solid fa-couch',
+        'fa-solid fa-user-group', 'fa-solid fa-baby', 'fa-solid fa-graduation-cap', 'fa-solid fa-gift',
+        'fa-solid fa-shield-halved', 'fa-solid fa-heart-pulse', 'fa-solid fa-pills', 'fa-solid fa-stethoscope',
+        'fa-solid fa-user', 'fa-solid fa-dumbbell', 'fa-solid fa-spa', 'fa-solid fa-scissors',
+        'fa-solid fa-square-parking', 'fa-solid fa-road', 'fa-solid fa-coins', 'fa-solid fa-wallet',
+        'fa-solid fa-mobile-screen-button', 'fa-solid fa-laptop', 'fa-solid fa-gamepad', 'fa-solid fa-camera',
+        'fa-solid fa-leaf', 'fa-solid fa-wine-glass', 'fa-solid fa-music', 'fa-solid fa-clapperboard',
+        'fa-solid fa-book', 'fa-solid fa-umbrella-beach', 'fa-solid fa-briefcase', 'fa-solid fa-bullseye'
     ],
 
     openEditCategory(key) {
         const cat = this.data.budgets[key];
         if (!cat) return;
 
-        // Build emoji grid HTML
-        const emojiGrid = this._catEmojis.map(e =>
-            `<button type="button" class="emoji-btn${cat.icon === e ? ' active' : ''}"
-                     onclick="App._pickEmoji(this,'${e}')">${e}</button>`
+        // Build icon grid HTML
+        const iconGrid = this._catIcons.map(iconClass =>
+            `<button type="button" class="emoji-btn${cat.icon === iconClass ? ' active' : ''}"
+                     onclick="App._pickIcon(this,'${iconClass}')">${UI.renderIconHTML(iconClass)}</button>`
         ).join('');
 
         // Build color swatch grid HTML
@@ -324,7 +421,7 @@ const App = {
         ).join('');
 
         Swal.fire({
-            title: `<span style="font-size:1.5rem">${cat.icon}</span> Edit Category`,
+            title: `<span style="font-size:1.5rem; display:inline-flex; align-items:center; justify-content:center;">${UI.renderIconHTML(cat.icon)}</span>&nbsp;&nbsp;Edit Category`,
             html: `
               <div class="cat-edit-form">
                 <div class="cef-group">
@@ -332,13 +429,27 @@ const App = {
                   <input id="cef-label" class="cef-input" type="text" value="${cat.label}" maxlength="24" placeholder="Name" />
                 </div>
                 <div class="cef-group">
-                  <label class="cef-label">Monthly Budget (USD)</label>
+                  <label class="cef-label">Monthly Budget (USD) — does NOT reset per cycle</label>
                   <input id="cef-budget" class="cef-input" type="number" value="${cat.budget}" min="0" step="1" placeholder="0" />
                 </div>
                 <div class="cef-group">
+                  <label class="cef-label">Spending Type</label>
+                  <select id="cef-frequency" class="cef-input">
+                    <option value="daily" ${(cat.frequency || 'daily') === 'daily' ? 'selected' : ''}>Daily (spread across days)</option>
+                    <option value="once" ${cat.frequency === 'once' ? 'selected' : ''}>One-time (paid once per month)</option>
+                  </select>
+                </div>
+                <div class="cef-group" id="cef-paycycle-group" style="display:${cat.frequency === 'once' ? 'block' : 'none'}">
+                  <label class="cef-label">Pay on which cycle?</label>
+                  <select id="cef-paycycle" class="cef-input">
+                    <option value="A" ${(cat.payCycle || 'A') === 'A' ? 'selected' : ''}>Cycle A (Payday 1)</option>
+                    <option value="B" ${cat.payCycle === 'B' ? 'selected' : ''}>Cycle B (Payday 2)</option>
+                  </select>
+                </div>
+                <div class="cef-group">
                   <label class="cef-label">Icon</label>
-                  <div id="cef-icon-display" class="cef-icon-display" style="background:${cat.color}22;color:${cat.color}">${cat.icon}</div>
-                  <div class="emoji-grid">${emojiGrid}</div>
+                  <div id="cef-icon-display" class="cef-icon-display" style="background:${cat.color}22;color:${cat.color}; display:inline-flex; align-items:center; justify-content:center;">${UI.renderIconHTML(cat.icon)}</div>
+                  <div class="emoji-grid">${iconGrid}</div>
                 </div>
                 <div class="cef-group">
                   <label class="cef-label">Color</label>
@@ -346,11 +457,14 @@ const App = {
                 </div>
               </div>`,
             showCancelButton: true,
+            showDenyButton: true,
             confirmButtonText: 'Save Category',
+            denyButtonText: 'Delete Category',
             cancelButtonText: 'Cancel',
             customClass: {
                 popup: 'swal-popup swal-cat-edit-popup',
                 confirmButton: 'swal-confirm-btn',
+                denyButton: 'swal-confirm-btn swal-confirm-danger',
                 cancelButton: 'swal-cancel-btn',
                 htmlContainer: 'swal-cat-edit-html'
             },
@@ -362,37 +476,175 @@ const App = {
                 popup._editKey = key;
                 popup._editIcon = cat.icon;
                 popup._editColor = cat.color;
+                // Toggle payCycle visibility when frequency changes
+                document.getElementById('cef-frequency').addEventListener('change', (e) => {
+                    document.getElementById('cef-paycycle-group').style.display =
+                        e.target.value === 'once' ? 'block' : 'none';
+                });
             },
             preConfirm: () => {
                 const popup = Swal.getPopup();
                 const label = document.getElementById('cef-label').value.trim();
                 const budget = parseFloat(document.getElementById('cef-budget').value);
+                const frequency = document.getElementById('cef-frequency').value;
+                const payCycle = document.getElementById('cef-paycycle').value;
                 if (!label) { Swal.showValidationMessage('Name cannot be empty'); return false; }
                 if (isNaN(budget) || budget < 0) { Swal.showValidationMessage('Enter a valid budget amount'); return false; }
-                return { label, budget, icon: popup._editIcon, color: popup._editColor };
+                return { label, budget, frequency, payCycle, icon: popup._editIcon, color: popup._editColor };
             }
         }).then(result => {
+            if (result.isDenied) {
+                this.deleteCategory(key);
+                return;
+            }
             if (!result.isConfirmed) return;
-            const { label, budget, icon, color } = result.value;
-            this.data.budgets[key] = { ...this.data.budgets[key], label, budget, icon, color };
+            const { label, budget, frequency, payCycle, icon, color } = result.value;
+            this.data.budgets[key] = { ...this.data.budgets[key], label, budget, frequency, payCycle, icon, color };
             Storage.save(this.data);
-            UI.toast(`${icon} ${label} updated`, 'success');
+            UI.toast(`${label} updated`, 'success');
             this.render();
         });
     },
 
-    // Called by emoji buttons inside the Swal popup
-    _pickEmoji(btn, emoji) {
+    deleteCategory(key) {
+        const cat = this.data.budgets[key];
+        if (!cat) return;
+        UI.confirm({
+            title: 'Delete Category?',
+            html: `Are you sure you want to delete <strong>${cat.label}</strong>?<br><br><small style="color:var(--muted)">Existing transactions will remain, but the category card will be removed.</small>`,
+            icon: 'warning',
+            confirmText: 'Yes, delete',
+            cancelText: 'Cancel'
+        }).then(confirmed => {
+            if (!confirmed) return;
+            delete this.data.budgets[key];
+            Storage.save(this.data);
+            UI.toast(`${cat.label} deleted`, 'warning');
+            this.render();
+        });
+    },
+
+    openAddCategory() {
+        const defaultIcon = 'fa-solid fa-folder-open';
+        const defaultColor = '#667eea';
+
+        // Build icon grid HTML
+        const iconGrid = this._catIcons.map(iconClass =>
+            `<button type="button" class="emoji-btn${defaultIcon === iconClass ? ' active' : ''}"
+                     onclick="App._pickIcon(this,'${iconClass}')">${UI.renderIconHTML(iconClass)}</button>`
+        ).join('');
+
+        // Build color swatch grid HTML
+        const colors = [
+            '#ff6b35', '#ff9800', '#ffc107', '#00c853',
+            '#4caf50', '#2196f3', '#00bcd4', '#9c27b0',
+            '#e91e63', '#f44336', '#3f51b5', '#009688',
+            '#795548', '#607d8b', '#667eea', '#764ba2'
+        ];
+        const colorGrid = colors.map(c =>
+            `<button type="button" class="color-swatch${defaultColor === c ? ' active' : ''}"
+                     style="background:${c}"
+                     onclick="App._pickColor(this,'${c}')"></button>`
+        ).join('');
+
+        Swal.fire({
+            title: `✚ Add Custom Category`,
+            html: `
+              <div class="cat-edit-form">
+                <div class="cef-group">
+                  <label class="cef-label">Category Name</label>
+                  <input id="cef-label" class="cef-input" type="text" value="" maxlength="24" placeholder="e.g. Shopping, Bills" />
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Monthly Budget (USD) — does NOT reset per cycle</label>
+                  <input id="cef-budget" class="cef-input" type="number" value="50" min="0" step="1" placeholder="50" />
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Spending Type</label>
+                  <select id="cef-frequency" class="cef-input">
+                    <option value="daily" selected>Daily (spread across days)</option>
+                    <option value="once">One-time (paid once per month)</option>
+                  </select>
+                </div>
+                <div class="cef-group" id="cef-paycycle-group" style="display:none">
+                  <label class="cef-label">Pay on which cycle?</label>
+                  <select id="cef-paycycle" class="cef-input">
+                    <option value="A" selected>Cycle A (Payday 1)</option>
+                    <option value="B">Cycle B (Payday 2)</option>
+                  </select>
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Icon</label>
+                  <div id="cef-icon-display" class="cef-icon-display" style="background:${defaultColor}22;color:${defaultColor}; display:inline-flex; align-items:center; justify-content:center;">${UI.renderIconHTML(defaultIcon)}</div>
+                  <div class="emoji-grid">${iconGrid}</div>
+                </div>
+                <div class="cef-group">
+                  <label class="cef-label">Color</label>
+                  <div class="color-grid">${colorGrid}</div>
+                </div>
+              </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Add Category',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                popup: 'swal-popup swal-cat-edit-popup',
+                confirmButton: 'swal-confirm-btn',
+                cancelButton: 'swal-cancel-btn',
+                htmlContainer: 'swal-cat-edit-html'
+            },
+            buttonsStyling: false,
+            reverseButtons: true,
+            didOpen: () => {
+                const popup = Swal.getPopup();
+                popup._editIcon = defaultIcon;
+                popup._editColor = defaultColor;
+                // Toggle payCycle visibility when frequency changes
+                document.getElementById('cef-frequency').addEventListener('change', (e) => {
+                    document.getElementById('cef-paycycle-group').style.display =
+                        e.target.value === 'once' ? 'block' : 'none';
+                });
+            },
+            preConfirm: () => {
+                const popup = Swal.getPopup();
+                const label = document.getElementById('cef-label').value.trim();
+                const budget = parseFloat(document.getElementById('cef-budget').value);
+                const frequency = document.getElementById('cef-frequency').value;
+                const payCycle = document.getElementById('cef-paycycle').value;
+                if (!label) { Swal.showValidationMessage('Name cannot be empty'); return false; }
+                if (isNaN(budget) || budget < 0) { Swal.showValidationMessage('Enter a valid budget amount'); return false; }
+
+                const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                if (this.data.budgets[key]) {
+                    Swal.showValidationMessage('A category with a similar name already exists');
+                    return false;
+                }
+                return { key, label, budget, frequency, payCycle, icon: popup._editIcon, color: popup._editColor };
+            }
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const { key, label, budget, frequency, payCycle, icon, color } = result.value;
+            this.data.budgets[key] = { label, budget, frequency, payCycle, icon, color };
+            Storage.save(this.data);
+            UI.toast(`${label} added`, 'success');
+            this.render();
+        });
+    },
+
+    // Called by icon buttons inside the Swal popup
+    _pickIcon(btn, iconClass) {
         const popup = Swal.getPopup();
-        popup._editIcon = emoji;
+        popup._editIcon = iconClass;
         popup.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         // update icon display
         const disp = document.getElementById('cef-icon-display');
-        if (disp) disp.textContent = emoji;
+        if (disp) disp.innerHTML = UI.renderIconHTML(iconClass);
         // update Swal title icon
         const title = Swal.getTitle();
-        if (title) title.querySelector('span').textContent = emoji;
+        if (title) {
+            const span = title.querySelector('span');
+            if (span) span.innerHTML = UI.renderIconHTML(iconClass);
+        }
     },
 
     // Called by color swatches inside the Swal popup
@@ -489,8 +741,8 @@ const App = {
     },
 
     renderReportCharts() {
-        const cycleInfo = Cycle.getCurrent(this.data.settings);
-        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd);
+        const cycleInfo = Cycle.getCurrent(this.data.settings, this.data.transactions);
+        const catStats = Budget.getCategoryStats(this.data, cycleInfo.cycleStart, cycleInfo.cycleEnd, cycleInfo.cycleLabel);
         const rDonut = document.getElementById('reportDonut');
         const rBar = document.getElementById('reportBar');
         if (this.charts.rDonut) this.charts.rDonut.destroy();
@@ -500,10 +752,15 @@ const App = {
         const values = Object.values(catStats).map(s => s.spent);
         const colors = Object.values(catStats).map(s => s.color);
 
+        const isDark = document.body.classList.contains('dark-mode');
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f3f4f6';
+        const tickColor = isDark ? '#94a3b8' : '#6b7280';
+        const legendColor = isDark ? '#f8fafc' : '#1f2937';
+
         this.charts.rDonut = new Chart(rDonut, {
             type: 'doughnut',
             data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
-            options: { cutout: '65%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+            options: { cutout: '65%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 }, color: legendColor } } } }
         });
 
         const monthly = Budget.getMonthlyReport(this.data);
@@ -511,13 +768,13 @@ const App = {
             type: 'bar',
             data: {
                 labels: monthly.map(m => m.label),
-                datasets: [{ label: 'Monthly Spending', data: monthly.map(m => m.amount), backgroundColor: 'rgba(102,126,234,0.75)', borderRadius: 8, borderSkipped: false }]
+                datasets: [{ label: 'Monthly Spending', data: monthly.map(m => m.amount), backgroundColor: 'rgba(13,148,136,0.75)', borderRadius: 8, borderSkipped: false }]
             },
             options: {
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { ticks: { callback: v => '$' + v } }
+                    x: { grid: { display: false }, ticks: { color: tickColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: tickColor, callback: v => '$' + v } }
                 }
             }
         });
@@ -549,6 +806,34 @@ const App = {
         document.getElementById('btnTelegram').addEventListener('click', () => this.sendToTelegram());
         document.getElementById('btnNotifyToggle').addEventListener('click', () => this.toggleNotify());
         document.getElementById('btnSetupTg').addEventListener('click', () => this.setupTelegram());
+
+        // Theme Toggle
+        document.getElementById('btnThemeToggle').addEventListener('click', () => this.toggleTheme());
+
+        // Modal type switches (Expense / Income)
+        document.querySelectorAll('input[name="txType"]').forEach(r => {
+            r.addEventListener('change', () => this._syncModalType());
+        });
+
+        // Search & Filter input events
+        document.getElementById('txSearchInput').addEventListener('input', () => {
+            this.txLimit = 10;
+            this.renderTransactions();
+        });
+        document.getElementById('txFilterCategory').addEventListener('change', () => {
+            this.txLimit = 10;
+            this.renderTransactions();
+        });
+        document.getElementById('txFilterType').addEventListener('change', () => {
+            this.txLimit = 10;
+            this.renderTransactions();
+        });
+
+        // Load More button click
+        document.getElementById('btnLoadMore').addEventListener('click', () => {
+            this.txLimit += 10;
+            this.renderTransactions();
+        });
 
         document.getElementById('expenseCurrency').addEventListener('change', e => {
             document.getElementById('amountCurrencyLabel').textContent =

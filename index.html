@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#667eea" />
+    <meta name="theme-color" content="#059669" />
     <title>🤑 Wallet Manager</title>
 
     <!-- Fonts -->
@@ -36,7 +36,9 @@
     <!-- ═══════════════ TOP BAR ═══════════════ -->
     <nav class="top-bar">
         <div class="top-bar-title">
-            <i class="fa-solid fa-wallet"></i> Budget Management
+            <i class="fa-solid fa-wallet"></i>
+            <span class="d-none d-sm-inline"> Budget Management</span>
+            <span class="d-inline d-sm-none"> Wallet</span>
         </div>
         <div class="top-bar-actions">
             <!-- Notification toggle -->
@@ -48,6 +50,9 @@
             </button>
             <button class="top-btn" id="btnTelegram" title="Send Report to Telegram">
                 <i class="fa-brands fa-telegram"></i><span class="d-none d-sm-inline"> Share</span>
+            </button>
+            <button class="top-btn" id="btnThemeToggle" title="Toggle Dark/Light Mode">
+                <i class="fa-solid fa-moon"></i>
             </button>
             <button class="top-btn" id="btnOpenSettings">
                 <i class="fa-solid fa-gear"></i>
@@ -112,7 +117,38 @@
                 <input type="file" id="importFile" accept=".json" style="display:none" />
             </div>
         </div>
+        
+        <!-- Search and Filter Bar -->
+        <div class="row g-2 mb-3 align-items-center">
+            <div class="col-12 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="txSearchInput" class="form-control border-start-0" placeholder="Search notes..." />
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <select id="txFilterCategory" class="form-select">
+                    <option value="all">All Categories</option>
+                    <option value="income">Income</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <select id="txFilterType" class="form-select">
+                    <option value="all">All Types</option>
+                    <option value="expense">Expenses</option>
+                    <option value="income">Income</option>
+                </select>
+            </div>
+        </div>
+
         <div id="recentTxns"></div>
+
+        <!-- Load More Section -->
+        <div class="text-center mt-3 mb-4" id="loadMoreSection" style="display:none">
+            <button class="top-btn" id="btnLoadMore" style="background:linear-gradient(135deg,var(--primary),var(--primary2)); font-size:.8rem; padding: 8px 24px;">
+                <i class="fa-solid fa-angles-down me-1"></i>Load More
+            </button>
+        </div>
 
     </div><!-- /main-wrap -->
 
@@ -131,19 +167,33 @@
                 </div>
                 <div class="modal-body">
                     <form id="expenseForm" autocomplete="off">
-
+                        
                         <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="txType" id="txTypeExpense" value="expense" checked />
+                                <label class="btn btn-outline-danger w-50" for="txTypeExpense">
+                                    <i class="fa-solid fa-minus me-1"></i> Expense
+                                </label>
+                                <input type="radio" class="btn-check" name="txType" id="txTypeIncome" value="income" />
+                                <label class="btn btn-outline-success w-50" for="txTypeIncome">
+                                    <i class="fa-solid fa-plus me-1"></i> Income
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="modalCatGroup">
                             <label class="form-label">Category</label>
                             <select id="modalCatSelect" class="form-select">
                                 <option value="">— Select Category —</option>
-                                <option value="food">🍔 Food</option>
-                                <option value="gasoline">⛽ Gasoline</option>
-                                <option value="home">🏠 Home &amp; Utilities</option>
-                                <option value="family">👨‍👩‍👧 Family</option>
-                                <option value="vehicle">🚗 Vehicle Maintenance</option>
-                                <option value="parking">🅿️ Parking</option>
-                                <option value="emergency">🛡️ Emergency Fund</option>
-                                <option value="personal">👤 Personal</option>
+                                <option value="food">Food</option>
+                                <option value="gasoline">Gasoline</option>
+                                <option value="home">Home & Utilities</option>
+                                <option value="family">MoM Bank</option>
+                                <option value="vehicle">Vehicle</option>
+                                <option value="parking">Parking</option>
+                                <option value="emergency">Emergency</option>
+                                <option value="personal">Personal</option>
                             </select>
                         </div>
 
@@ -184,7 +234,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">⚙️ Settings</h5>
+                    <h5 class="modal-title"><i class="fa-solid fa-gear me-1"></i> Settings</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -207,8 +257,8 @@
                         <div class="col-6">
                             <label class="form-label">Payday 1 — Day of month</label>
                             <div class="input-with-suffix">
-                                <input type="number" id="settingPayday1Day" class="form-control" value="5" min="1"
-                                    max="28" placeholder="5" />
+                                <input type="number" id="settingPayday1Day" class="form-control" value="6" min="1"
+                                    max="28" placeholder="6" />
                                 <span class="input-suffix">th</span>
                             </div>
                             <div class="field-hint">Cycle A starts on this day</div>
@@ -222,8 +272,8 @@
                         <div class="col-6">
                             <label class="form-label">Payday 2 — Day of month</label>
                             <div class="input-with-suffix">
-                                <input type="number" id="settingPayday2Day" class="form-control" value="15" min="1"
-                                    max="28" placeholder="15" />
+                                <input type="number" id="settingPayday2Day" class="form-control" value="21" min="1"
+                                    max="28" placeholder="21" />
                                 <span class="input-suffix">th</span>
                             </div>
                             <div class="field-hint">Cycle B starts on this day</div>
@@ -278,7 +328,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">📊 Reports</h5>
+                    <h5 class="modal-title"><i class="fa-solid fa-chart-line me-1"></i> Reports</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -303,12 +353,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
     <!-- App Scripts (order matters) -->
-    <script src="storage.js"></script>
-    <script src="cycle.js"></script>
-    <script src="budget.js"></script>
-    <script src="telegram.js"></script>
-    <script src="ui.js"></script>
-    <script src="app.js"></script>
+    <script src="storage.js?v=2"></script>
+    <script src="cycle.js?v=2"></script>
+    <script src="budget.js?v=2"></script>
+    <script src="telegram.js?v=2"></script>
+    <script src="ui.js?v=2"></script>
+    <script src="app.js?v=2"></script>
 
     <!-- Show Telegram setup banner if chat ID not configured -->
     <script>

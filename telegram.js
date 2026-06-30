@@ -6,6 +6,28 @@ const TG = {
     CHAT_KEY: 'tg_chat_id',
     NOTIFY_KEY: 'tg_notify_enabled',
 
+    _getIconEmoji(iconStr) {
+        if (!iconStr) return '💸';
+        if (!iconStr.startsWith('fa-') && !iconStr.includes(' ')) return iconStr;
+        const map = {
+            'fa-utensils': '🍔', 'fa-pizza-slice': '🍕', 'fa-mug-hot': '☕', 'fa-cart-shopping': '🛒',
+            'fa-gas-pump': '⛽', 'fa-car': '🚗', 'fa-motorcycle': '🏍️', 'fa-bus': '🚌',
+            'fa-house': '🏠', 'fa-wrench': '🔧', 'fa-plug': '🔌', 'fa-couch': '🛋️',
+            'fa-user-group': '👨‍👩‍👧', 'fa-baby': '👶', 'fa-graduation-cap': '🎓', 'fa-gift': '🎁',
+            'fa-shield-halved': '🛡️', 'fa-heart-pulse': '❤️', 'fa-pills': '💊', 'fa-stethoscope': '🩺',
+            'fa-user': '👤', 'fa-dumbbell': '🏋️', 'fa-spa': '💆', 'fa-scissors': '✂️',
+            'fa-square-parking': '🅿️', 'fa-road': '🚧', 'fa-coins': '🪙', 'fa-wallet': '💰',
+            'fa-mobile-screen-button': '📱', 'fa-laptop': '💻', 'fa-gamepad': '🎮', 'fa-camera': '📷',
+            'fa-leaf': '🌿', 'fa-wine-glass': '🍷', 'fa-music': '🎵', 'fa-clapperboard': '🎬',
+            'fa-book': '📚', 'fa-umbrella-beach': '🏖️', 'fa-briefcase': '💼', 'fa-bullseye': '🎯',
+            'fa-folder-open': '📂', 'fa-receipt': '💸'
+        };
+        for (const [k, v] of Object.entries(map)) {
+            if (iconStr.includes(k)) return v;
+        }
+        return '💸';
+    },
+
     /* ── Chat ID ── */
     getChatId() { return localStorage.getItem(this.CHAT_KEY); },
     setChatId(id) { localStorage.setItem(this.CHAT_KEY, id); },
@@ -42,11 +64,23 @@ const TG = {
         }
     },
 
-    /* ── Notify: expense added ── */
+    /* ── Notify: transaction added ── */
     async notifyExpenseAdded(tx, budgets, catStats) {
         if (!this.isEnabled()) return;
         const chatId = this.getChatId();
         if (!chatId) return;
+
+        const isInc = tx.type === 'income';
+        if (isInc) {
+            const msg =
+                `💰 *Income Logged*\n` +
+                `━━━━━━━━━━━━━━━\n` +
+                `💵 Amount: *+$${tx.amount.toFixed(2)}*\n` +
+                `📝 Source: ${tx.note || '—'}\n` +
+                `📅 Date: ${tx.date}`;
+            await this.send(chatId, msg);
+            return;
+        }
 
         const cat = budgets[tx.category] || { icon: '💸', label: tx.category };
         const stat = catStats[tx.category];
@@ -57,10 +91,10 @@ const TG = {
         const remaining = stat ? `$${stat.remaining.toFixed(2)} left` : '';
 
         const msg =
-            `${cat.icon} *Expense Logged*\n` +
+            `${this._getIconEmoji(cat.icon)} *Expense Logged*\n` +
             `━━━━━━━━━━━━━━━\n` +
             `📂 Category: ${cat.label}\n` +
-            `💵 Amount: *$${tx.amount.toFixed(2)}*\n` +
+            `💵 Amount: *-$${tx.amount.toFixed(2)}*\n` +
             `📝 Note: ${tx.note || '—'}\n` +
             `📅 Date: ${tx.date}\n` +
             `${status} Budget: ${stat ? stat.pct.toFixed(0) + '%' : '?'} used — ${remaining}` +
@@ -80,7 +114,7 @@ const TG = {
         const msg =
             `${emoji} *${title}*\n` +
             `━━━━━━━━━━━━━━━\n` +
-            `${cat.icon} ${cat.label}\n` +
+            `${this._getIconEmoji(cat.icon)} ${cat.label}\n` +
             `Spent: *$${stat.spent.toFixed(2)}* / $${stat.budget}\n` +
             `${stat.pct >= 100 ? '❌ Over by $' + Math.abs(stat.remaining).toFixed(2) : '⚠️ ' + stat.pct.toFixed(0) + '% used'}`;
 
@@ -92,17 +126,16 @@ const TG = {
         const chatId = this.getChatId();
         if (!chatId) return;
 
-        const cycleInfo = Cycle.getCurrent(data.settings);
-        const cycleTxns = Cycle.getTransactionsForCycle(data.transactions, cycleInfo.cycleStart, cycleInfo.cycleEnd);
-        const cycleSpent = cycleTxns.reduce((s, t) => s + t.amount, 0);
-        const remaining = cycleInfo.income - cycleSpent;
-        const safeDaily = cycleInfo.daysUntilPayday > 0 ? Math.max(0, remaining / cycleInfo.daysUntilPayday) : 0;
+        const cycleInfo = Cycle.getCurrent(data.settings, data.transactions);
+        const cycleSpent = cycleInfo.spent;
+        const remaining = cycleInfo.remaining;
+        const safeDaily = cycleInfo.safeDaily;
         const cycleLabel = Cycle.formatCycleLabel(cycleInfo.cycleStart, cycleInfo.cycleEnd);
 
-        const catStats = Budget.getCategoryStats(data, cycleInfo.cycleStart, cycleInfo.cycleEnd);
+        const catStats = Budget.getCategoryStats(data, cycleInfo.cycleStart, cycleInfo.cycleEnd, cycleInfo.cycleLabel);
         const catLines = Object.entries(catStats)
             .filter(([, s]) => s.spent > 0)
-            .map(([, s]) => `${this._statusEmoji(s.pct)} ${s.icon} ${s.label}: $${s.spent.toFixed(2)}/$${s.budget}`)
+            .map(([, s]) => `${this._statusEmoji(s.pct)} ${this._getIconEmoji(s.icon)} ${s.label}: $${s.spent.toFixed(2)}/$${s.budget}`)
             .join('\n') || '  No spending yet';
 
         const safeColor = safeDaily < 5 ? '🔴' : safeDaily < 10 ? '🟠' : '🟢';

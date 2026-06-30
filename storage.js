@@ -8,41 +8,72 @@ const Storage = {
             settings: {
                 name: 'Davy',
                 monthlyIncome: 320,
-                payday1: { day: 5, amount: 160 },
-                payday2: { day: 15, amount: 160 },
+                payday1: { day: 6, amount: 160 },
+                payday2: { day: 21, amount: 160 },
                 exchangeRate: 4000,
                 currency: 'USD'
             },
             budgets: {
-                food: { label: 'Food', icon: '🍔', color: '#ff6b35', budget: 145 },
-                gasoline: { label: 'Gasoline', icon: '⛽', color: '#2196f3', budget: 20 },
-                home: { label: 'Home', icon: '🏠', color: '#9c27b0', budget: 60 },
-                family: { label: 'Family', icon: '👨‍👩‍👧', color: '#4caf50', budget: 50 },
-                vehicle: { label: 'Vehicle', icon: '🚗', color: '#f44336', budget: 10 },
-                parking: { label: 'Parking', icon: '🅿️', color: '#009688', budget: 10 },
-                emergency: { label: 'Emergency', icon: '🛡️', color: '#3f51b5', budget: 20 },
-                personal: { label: 'Personal', icon: '👤', color: '#e91e63', budget: 5 }
+                food: { label: 'Food', icon: 'fa-solid fa-utensils', color: '#ff6b35', budget: 145, frequency: 'daily' },
+                gasoline: { label: 'Gasoline', icon: 'fa-solid fa-gas-pump', color: '#00b4d8', budget: 20, frequency: 'daily' },
+                home: { label: 'Home & Utilities', icon: 'fa-solid fa-house', color: '#7c3aed', budget: 60, frequency: 'once', payCycle: 'B' },
+                family: { label: 'MoM Bank', icon: 'fa-solid fa-building-columns', color: '#ec4899', budget: 50, frequency: 'once', payCycle: 'A' },
+                vehicle: { label: 'Vehicle', icon: 'fa-solid fa-car', color: '#ef4444', budget: 10, frequency: 'once', payCycle: 'A' },
+                parking: { label: 'Parking', icon: 'fa-solid fa-square-parking', color: '#14b8a6', budget: 10, frequency: 'once', payCycle: 'B' },
+                emergency: { label: 'Emergency', icon: 'fa-solid fa-shield-halved', color: '#6366f1', budget: 20, frequency: 'daily' },
+                personal: { label: 'Personal', icon: 'fa-solid fa-user', color: '#f43f5e', budget: 5, frequency: 'daily' }
             },
             transactions: []
         };
     },
 
+    _migrateEmojis(data) {
+        const emojiMap = {
+            '🍔': 'fa-solid fa-utensils',
+            '⛽': 'fa-solid fa-gas-pump',
+            '🏠': 'fa-solid fa-house',
+            '🏦': 'fa-solid fa-building-columns',
+            '🚗': 'fa-solid fa-car',
+            '🅿️': 'fa-solid fa-square-parking',
+            '🛡️': 'fa-solid fa-shield-halved',
+            '👤': 'fa-solid fa-user',
+            '📂': 'fa-solid fa-folder-open'
+        };
+        if (data && data.budgets) {
+            Object.values(data.budgets).forEach(b => {
+                if (emojiMap[b.icon]) {
+                    b.icon = emojiMap[b.icon];
+                }
+            });
+        }
+        if (data && data.settings) {
+            if (data.settings.payday1 && data.settings.payday1.day === 5) {
+                data.settings.payday1.day = 6;
+            }
+            if (data.settings.payday2 && data.settings.payday2.day === 15) {
+                data.settings.payday2.day = 21;
+            }
+        }
+        return data;
+    },
+
     load() {
         try {
             const raw = localStorage.getItem(DB_KEY);
-            if (!raw) return this._defaults();
+            if (!raw) return this._migrateEmojis(this._defaults());
             const data = JSON.parse(raw);
             const def = this._defaults();
             // Deep-merge payday objects so .day is never lost
             const p1 = { ...def.settings.payday1, ...(data.settings?.payday1 || {}) };
             const p2 = { ...def.settings.payday2, ...(data.settings?.payday2 || {}) };
-            return {
+            const loaded = {
                 settings: { ...def.settings, ...(data.settings || {}), payday1: p1, payday2: p2 },
                 budgets: { ...def.budgets, ...(data.budgets || {}) },
                 transactions: data.transactions || []
             };
+            return this._migrateEmojis(loaded);
         } catch {
-            return this._defaults();
+            return this._migrateEmojis(this._defaults());
         }
     },
 
